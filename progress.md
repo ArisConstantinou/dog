@@ -20,10 +20,11 @@ Original prompt: Yes but now dog feels still, make him to change behaviors once 
 - Sleep now plays its entry once before switching to the dedicated breathing loop; the sleep-entry transition itself never repeats.
 - End-to-end browser proof: Ready uses `Idle_1 / one`; Come uses `Walk_F_IP / one` then `Idle_1 / one`; Sit holds `Sitting_loop / one`; an autonomous look-around returns to that sitting pose; Sleep alone transitions from `Lie_Sleep_start / one` to `Lie_Sleep_loop / loopOne`.
 - Final mobile check at 390x844 holds Sit with `cycle=one`, has no horizontal overflow, and the browser console has zero errors.
+- Commit `abe18ff` deployed successfully to GitHub Pages. The live bundle `index-CN1vmfzg.js` reports `Idle_1 / one`, keeps `Sit` at `Sitting_loop / one`, and returns there after an autonomous look-around with zero console errors.
 
 ## TODO
 
-- Current follow-up is fully verified locally; commit, push, Pages deployment, and live verification remain before handoff.
+- Completed: 7/7 tests, production build, Pages build, lint, desktop/mobile browser verification, commit, push, Pages deployment, and live behavioral verification.
 
 ## Suggestions
 
