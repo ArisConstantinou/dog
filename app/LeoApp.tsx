@@ -100,7 +100,12 @@ function loadState(): LeoState {
   if (typeof window === "undefined") return initialState;
   try {
     const saved = localStorage.getItem("leo-state-v1");
-    return saved ? { ...initialState, ...JSON.parse(saved), busy: false } : initialState;
+    if (!saved) return initialState;
+    const stored = { ...initialState, ...JSON.parse(saved), busy: false } as LeoState;
+    return {
+      ...stored,
+      action: stored.stay ? "stay" : stored.pose === "sleep" ? "sleep" : "Ready",
+    };
   } catch { return initialState; }
 }
 
@@ -174,7 +179,11 @@ export default function LeoApp() {
     }));
     if (id === "speak") playBark();
     if (id === "come") setTrailPosition((value) => Math.min(3, value + 1));
-    actionTimer.current = setTimeout(() => setState((prev) => ({ ...prev, busy: false })), action.duration);
+    actionTimer.current = setTimeout(() => setState((prev) => ({
+      ...prev,
+      busy: false,
+      action: id === "stay" || id === "sleep" ? id : "Ready",
+    })), action.duration);
   }, []);
 
   const petLeo = () => {
@@ -189,7 +198,7 @@ export default function LeoApp() {
       busy: true,
       updatedAt: Date.now(),
     }));
-    actionTimer.current = setTimeout(() => setState((prev) => ({ ...prev, busy: false })), 900);
+    actionTimer.current = setTimeout(() => setState((prev) => ({ ...prev, busy: false, action: "Ready" })), 900);
   };
 
   const executeText = (raw: string) => {

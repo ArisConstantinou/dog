@@ -32,3 +32,9 @@ test("Leo uses a rigged model instead of disconnected primitive shapes", async (
   const fallback = await stat(new URL("../public/models/leo-rigged-fallback.glb", import.meta.url));
   assert.ok(fallback.size > 100_000, "expected a real rigged binary model asset");
 });
+
+test("one-shot commands return Leo to Ready instead of looping forever", async () => {
+  const source = await readFile(new URL("../app/LeoApp.tsx", import.meta.url), "utf8");
+  assert.match(source, /action:\s*id === "stay" \|\| id === "sleep" \? id : "Ready"/);
+  assert.match(source, /stored\.stay \? "stay" : stored\.pose === "sleep" \? "sleep" : "Ready"/);
+});
