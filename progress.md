@@ -10,12 +10,12 @@ Original prompt: Yes but now dog feels still, make him to change behaviors once 
 - Normal browser wall-clock proof completed two different autonomous behaviors (`scratch` then `look-around`) without test-time advancement.
 - Manual `Come` interrupted an active autonomous behavior; `Stay` remained protected after advancing nine seconds.
 - Visually inspected the realistic rigged Leo at 1440×900 and 390×844; mobile has no horizontal overflow.
+- GitHub Pages deployment `44c1643` succeeded; the live site autonomously performed `sniff` followed by `look-around` in real wall-clock time, with no runtime errors.
 - Build, Pages build, lint, and 4 automated tests pass.
 
 ## TODO
 
-- Run the final test/build/lint suite.
-- Push and verify the GitHub Pages deployment.
+- Completed: final tests (4/4), production build, Pages build, lint, push, deployment, and live behavioral verification.
 
 ## Suggestions
 
