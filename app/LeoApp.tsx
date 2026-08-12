@@ -17,6 +17,8 @@ declare global {
   interface Window {
     SpeechRecognition?: new () => SpeechRecognitionLike;
     webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    render_game_to_text?: () => string;
+    advanceTime?: (milliseconds: number) => void;
   }
 }
 
@@ -88,6 +90,69 @@ const actionMap: Record<string, { pose: LeoPose; message: string; duration: numb
   release: { pose: "stand", message: "Leo is free again, waiting to see what happens next.", duration: 450 },
 };
 
+type AutonomousBehavior = {
+  id: keyof typeof actionMap;
+  pose: LeoPose;
+  endPose: LeoPose;
+  message: string;
+  settledMessage: string;
+  duration: number;
+};
+
+const autonomousBehaviors: AutonomousBehavior[] = [
+  {
+    id: "look-around",
+    pose: "stand",
+    endPose: "stand",
+    message: "Leo catches a small sound and quietly checks the room.",
+    settledMessage: "Leo decides everything is fine and looks back at you.",
+    duration: 2100,
+  },
+  {
+    id: "sniff",
+    pose: "stand",
+    endPose: "stand",
+    message: "Leo lowers his nose and investigates an interesting scent.",
+    settledMessage: "The scent trail ends. Leo stays close by.",
+    duration: 2300,
+  },
+  {
+    id: "stretch",
+    pose: "play",
+    endPose: "stand",
+    message: "Leo leans forward into a long, unhurried stretch.",
+    settledMessage: "Stretch finished, Leo stands comfortably again.",
+    duration: 1900,
+  },
+  {
+    id: "shake",
+    pose: "stand",
+    endPose: "stand",
+    message: "Leo gives his coat a quick shake from nose to tail.",
+    settledMessage: "His ears settle and Leo relaxes again.",
+    duration: 1700,
+  },
+  {
+    id: "scratch",
+    pose: "sit",
+    endPose: "sit",
+    message: "Leo sits and scratches carefully behind one ear.",
+    settledMessage: "That was the spot. Leo sits contentedly for a moment.",
+    duration: 2200,
+  },
+  {
+    id: "lick",
+    pose: "sit",
+    endPose: "sit",
+    message: "Leo gives his nose one quick, familiar lick.",
+    settledMessage: "Leo watches you again with bright, patient eyes.",
+    duration: 1100,
+  },
+];
+
+const AUTONOMY_DELAY_MIN = 5000;
+const AUTONOMY_DELAY_RANGE = 4000;
+
 const clamp = (value: number) => Math.max(0, Math.min(100, value));
 
 function currentWorld(): WorldId {
@@ -129,7 +194,16 @@ export default function LeoApp() {
   const [toast, setToast] = useState("");
   const [trailPosition, setTrailPosition] = useState(0);
   const actionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autonomyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recentAutonomy = useRef<string[]>([]);
+  const advancedIdleMilliseconds = useRef(0);
+  const stateRef = useRef(state);
   const recognition = useRef<SpeechRecognitionLike | null>(null);
+  const [visibilityTick, setVisibilityTick] = useState(0);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     try {
@@ -148,6 +222,93 @@ export default function LeoApp() {
     const timer = setTimeout(() => setToast(""), 4200);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  const triggerAutonomousBehavior = useCallback(() => {
+    const current = stateRef.current;
+    if (document.hidden || current.busy || current.stay || current.pose === "sleep") return false;
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const allowed = autonomousBehaviors.filter((behavior) =>
+      !recentAutonomy.current.includes(behavior.id)
+      && (!reducedMotion || !["stretch", "shake"].includes(behavior.id)),
+    );
+    const pool = allowed.length ? allowed : autonomousBehaviors;
+    const behavior = pool[Math.floor(Math.random() * pool.length)];
+    recentAutonomy.current = [behavior.id, ...recentAutonomy.current].slice(0, 2);
+
+    if (actionTimer.current) clearTimeout(actionTimer.current);
+    const activeState: LeoState = {
+      ...current,
+      pose: behavior.pose,
+      action: behavior.id,
+      message: behavior.message,
+      busy: true,
+      updatedAt: Date.now(),
+    };
+    stateRef.current = activeState;
+    setState(activeState);
+    actionTimer.current = setTimeout(() => setState((previous) => {
+      if (previous.action !== behavior.id) return previous;
+      return {
+        ...previous,
+        pose: behavior.endPose,
+        action: "Ready",
+        message: behavior.settledMessage,
+        busy: false,
+        updatedAt: Date.now(),
+      };
+    }), behavior.duration);
+    return true;
+  }, []);
+
+  useEffect(() => {
+    const onVisibilityChange = () => setVisibilityTick((value) => value + 1);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
+
+  useEffect(() => {
+    if (autonomyTimer.current) clearTimeout(autonomyTimer.current);
+    if (document.hidden || state.busy || state.stay || state.pose === "sleep") return;
+    const delay = AUTONOMY_DELAY_MIN + Math.random() * AUTONOMY_DELAY_RANGE;
+    autonomyTimer.current = setTimeout(triggerAutonomousBehavior, delay);
+    return () => {
+      if (autonomyTimer.current) clearTimeout(autonomyTimer.current);
+    };
+  }, [state.busy, state.pose, state.stay, state.updatedAt, triggerAutonomousBehavior, visibilityTick]);
+
+  useEffect(() => {
+    window.render_game_to_text = () => JSON.stringify({
+      mode: "leo-companion",
+      action: stateRef.current.action,
+      pose: stateRef.current.pose,
+      busy: stateRef.current.busy,
+      stay: stateRef.current.stay,
+      autonomousRecent: recentAutonomy.current,
+      note: "Leo is a centered 3D companion; commands override autonomous idle behaviors.",
+    });
+    window.advanceTime = (milliseconds) => {
+      const current = stateRef.current;
+      if (current.busy || current.stay || current.pose === "sleep") {
+        advancedIdleMilliseconds.current = 0;
+        return;
+      }
+      advancedIdleMilliseconds.current += Math.max(0, milliseconds);
+      if (advancedIdleMilliseconds.current >= AUTONOMY_DELAY_MIN) {
+        advancedIdleMilliseconds.current = 0;
+        triggerAutonomousBehavior();
+      }
+    };
+    return () => {
+      delete window.render_game_to_text;
+      delete window.advanceTime;
+    };
+  }, [triggerAutonomousBehavior]);
+
+  useEffect(() => () => {
+    if (actionTimer.current) clearTimeout(actionTimer.current);
+    if (autonomyTimer.current) clearTimeout(autonomyTimer.current);
+  }, []);
 
   const selectWorld = (next: WorldId) => {
     const url = new URL(window.location.href);

@@ -38,3 +38,11 @@ test("one-shot commands return Leo to Ready instead of looping forever", async (
   assert.match(source, /action:\s*id === "stay" \|\| id === "sleep" \? id : "Ready"/);
   assert.match(source, /stored\.stay \? "stay" : stored\.pose === "sleep" \? "sleep" : "Ready"/);
 });
+
+test("autonomous idle behaviors vary and yield to protected states", async () => {
+  const source = await readFile(new URL("../app/LeoApp.tsx", import.meta.url), "utf8");
+  assert.match(source, /recentAutonomy\.current\.includes\(behavior\.id\)/);
+  assert.match(source, /current\.busy \|\| current\.stay \|\| current\.pose === "sleep"/);
+  assert.match(source, /window\.render_game_to_text/);
+  assert.match(source, /window\.advanceTime/);
+});
