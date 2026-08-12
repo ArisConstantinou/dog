@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
 async function render() {
@@ -20,4 +21,14 @@ test("server-renders Leo's interactive 3D companion", async () => {
   assert.match(html, /Interactive companion/);
   assert.match(html, /Talk to Leo/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
+});
+
+test("Leo uses a rigged model instead of disconnected primitive shapes", async () => {
+  const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
+  assert.match(source, /SketchfabAnimation/);
+  assert.match(source, /leo-rigged-fallback\.glb/);
+  assert.doesNotMatch(source, /sphereGeometry|capsuleGeometry/);
+
+  const fallback = await stat(new URL("../public/models/leo-rigged-fallback.glb", import.meta.url));
+  assert.ok(fallback.size > 100_000, "expected a real rigged binary model asset");
 });
