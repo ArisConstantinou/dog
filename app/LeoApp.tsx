@@ -93,7 +93,6 @@ const actionMap: Record<string, { pose: LeoPose; message: string; duration: numb
 type AutonomousBehavior = {
   id: keyof typeof actionMap;
   pose: LeoPose;
-  endPose: LeoPose;
   message: string;
   settledMessage: string;
   duration: number;
@@ -103,7 +102,6 @@ const autonomousBehaviors: AutonomousBehavior[] = [
   {
     id: "look-around",
     pose: "stand",
-    endPose: "stand",
     message: "Leo catches a small sound and quietly checks the room.",
     settledMessage: "Leo decides everything is fine and looks back at you.",
     duration: 2100,
@@ -111,23 +109,20 @@ const autonomousBehaviors: AutonomousBehavior[] = [
   {
     id: "sniff",
     pose: "stand",
-    endPose: "stand",
     message: "Leo lowers his nose and investigates an interesting scent.",
-    settledMessage: "The scent trail ends. Leo stays close by.",
+    settledMessage: "The scent trail ends. Leo returns to the pose you asked for.",
     duration: 2300,
   },
   {
     id: "stretch",
     pose: "play",
-    endPose: "stand",
     message: "Leo leans forward into a long, unhurried stretch.",
-    settledMessage: "Stretch finished, Leo stands comfortably again.",
+    settledMessage: "Stretch finished, Leo settles back into place.",
     duration: 1900,
   },
   {
     id: "shake",
     pose: "stand",
-    endPose: "stand",
     message: "Leo gives his coat a quick shake from nose to tail.",
     settledMessage: "His ears settle and Leo relaxes again.",
     duration: 1700,
@@ -135,15 +130,13 @@ const autonomousBehaviors: AutonomousBehavior[] = [
   {
     id: "scratch",
     pose: "sit",
-    endPose: "sit",
     message: "Leo sits and scratches carefully behind one ear.",
-    settledMessage: "That was the spot. Leo sits contentedly for a moment.",
+    settledMessage: "That was the spot. Leo returns to the pose you asked for.",
     duration: 2200,
   },
   {
     id: "lick",
     pose: "sit",
-    endPose: "sit",
     message: "Leo gives his nose one quick, familiar lick.",
     settledMessage: "Leo watches you again with bright, patient eyes.",
     duration: 1100,
@@ -226,6 +219,7 @@ export default function LeoApp() {
   const triggerAutonomousBehavior = useCallback(() => {
     const current = stateRef.current;
     if (document.hidden || current.busy || current.stay || current.pose === "sleep") return false;
+    const returnPose = current.pose;
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const allowed = autonomousBehaviors.filter((behavior) =>
@@ -251,7 +245,7 @@ export default function LeoApp() {
       if (previous.action !== behavior.id) return previous;
       return {
         ...previous,
-        pose: behavior.endPose,
+        pose: returnPose,
         action: "Ready",
         message: behavior.settledMessage,
         busy: false,

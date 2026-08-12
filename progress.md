@@ -11,11 +11,19 @@ Original prompt: Yes but now dog feels still, make him to change behaviors once 
 - Manual `Come` interrupted an active autonomous behavior; `Stay` remained protected after advancing nine seconds.
 - Visually inspected the realistic rigged Leo at 1440×900 and 390×844; mobile has no horizontal overflow.
 - GitHub Pages deployment `44c1643` succeeded; the live site autonomously performed `sniff` followed by `look-around` in real wall-clock time, with no runtime errors.
-- Build, Pages build, lint, and 4 automated tests pass.
+- Build, Pages build, lint, and 7 automated tests pass.
+- Follow-up bug identified: `Ready` always selected the standing idle animation even when a completed command had set `sit`, `down`, or another resting pose.
+- Updated clip selection so `Ready` resolves from the current pose rather than the generic standing action hint; added the selected clip as inspectable 3D state for end-to-end verification.
+- Autonomous micro-behaviors now remember and restore the last user-requested pose instead of ending in their own hard-coded posture.
+- Removed endless Ready/Stay loops: resting poses now play once and hold; only sleep keeps its breathing loop. Standing Ready now selects `Idle_1` instead of accidentally looping `Crouch_Idle_end`.
+- The local rigged fallback also uses a single clamped animation pass rather than Three.js's default infinite repeat.
+- Sleep now plays its entry once before switching to the dedicated breathing loop; the sleep-entry transition itself never repeats.
+- End-to-end browser proof: Ready uses `Idle_1 / one`; Come uses `Walk_F_IP / one` then `Idle_1 / one`; Sit holds `Sitting_loop / one`; an autonomous look-around returns to that sitting pose; Sleep alone transitions from `Lie_Sleep_start / one` to `Lie_Sleep_loop / loopOne`.
+- Final mobile check at 390x844 holds Sit with `cycle=one`, has no horizontal overflow, and the browser console has zero errors.
 
 ## TODO
 
-- Completed: final tests (4/4), production build, Pages build, lint, push, deployment, and live behavioral verification.
+- Current follow-up is fully verified locally; commit, push, Pages deployment, and live verification remain before handoff.
 
 ## Suggestions
 

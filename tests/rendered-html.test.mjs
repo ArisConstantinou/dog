@@ -46,3 +46,26 @@ test("autonomous idle behaviors vary and yield to protected states", async () =>
   assert.match(source, /window\.render_game_to_text/);
   assert.match(source, /window\.advanceTime/);
 });
+
+test("Ready keeps the pose established by the completed command", async () => {
+  const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
+  assert.match(source, /normalizedAction === "ready"\s*\? poseClipHints\[nextPose\]/);
+  assert.match(source, /data-animation-clip=\{selectedClipName\}/);
+});
+
+test("resting poses hold instead of endlessly replaying a transition", async () => {
+  const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
+  assert.match(source, /stand: \["idle 1", "idle 2", "idle 4", "idle"\]/);
+  assert.match(source, /shouldLoop = forceLoop \?\? false/);
+  assert.match(source, /data-animation-cycle=\{selectedCycleMode\}/);
+  assert.match(source, /selected\.setLoop\(THREE\.LoopOnce, 1\)/);
+  assert.match(source, /selected\.clampWhenFinished = true/);
+  assert.doesNotMatch(source, /\["ready", "stay"\]\.includes/);
+});
+
+test("autonomous behavior returns to the user's requested pose", async () => {
+  const source = await readFile(new URL("../app/LeoApp.tsx", import.meta.url), "utf8");
+  assert.match(source, /const returnPose = current\.pose/);
+  assert.match(source, /pose: returnPose,\s*action: "Ready"/);
+  assert.doesNotMatch(source, /pose: behavior\.endPose/);
+});

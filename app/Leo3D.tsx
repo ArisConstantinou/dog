@@ -75,7 +75,7 @@ const actionClipHints: Record<string, string[]> = {
 };
 
 const poseClipHints: Record<LeoPose, string[]> = {
-  stand: ["idle", "stand"],
+  stand: ["idle 1", "idle 2", "idle 4", "idle"],
   sit: ["sitting loop", "sitting"],
   down: ["lie loop", "lie"],
   play: ["crouch idle loop", "crouch idle", "idle"],
@@ -122,6 +122,8 @@ export function Leo3D({ pose, action, onPet, compact = false }: ActorProps) {
   const onPetRef = useRef(onPet);
   const returnToPoseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "fallback">("loading");
+  const [selectedClipName, setSelectedClipName] = useState("");
+  const [selectedCycleMode, setSelectedCycleMode] = useState<"one" | "loopOne">("one");
   const actionRef = useRef(action);
   const poseRef = useRef(pose);
 
@@ -134,8 +136,11 @@ export function Leo3D({ pose, action, onPet, compact = false }: ActorProps) {
     if (returnToPoseTimer.current) clearTimeout(returnToPoseTimer.current);
     const selected = chooseClip(clips.current, poseClipHints[nextPose]);
     if (!selected) return;
+    const cycleMode = nextPose === "sleep" ? "loopOne" : "one";
+    setSelectedClipName(selected[1]);
+    setSelectedCycleMode(cycleMode);
     api.current.setCurrentAnimationByUID(selected[0], () => {
-      api.current?.setCycleMode("loopOne");
+      api.current?.setCycleMode(cycleMode);
       api.current?.setSpeed(nextPose === "sleep" ? 0.72 : 1);
       api.current?.seekTo(0, () => api.current?.play());
     });
@@ -144,10 +149,15 @@ export function Leo3D({ pose, action, onPet, compact = false }: ActorProps) {
   const playClip = useCallback((nextAction: string, nextPose: LeoPose, forceLoop?: boolean) => {
     if (!api.current || clips.current.length === 0) return;
     if (returnToPoseTimer.current) clearTimeout(returnToPoseTimer.current);
-    const hints = actionClipHints[nextAction.toLowerCase()] ?? poseClipHints[nextPose];
+    const normalizedAction = nextAction.toLowerCase();
+    const hints = normalizedAction === "ready"
+      ? poseClipHints[nextPose]
+      : actionClipHints[normalizedAction] ?? poseClipHints[nextPose];
     const selected = chooseClip(clips.current, hints);
     if (!selected) return;
-    const shouldLoop = forceLoop ?? ["ready", "stay"].includes(nextAction.toLowerCase());
+    setSelectedClipName(selected[1]);
+    const shouldLoop = forceLoop ?? false;
+    setSelectedCycleMode(shouldLoop ? "loopOne" : "one");
     api.current.setCurrentAnimationByUID(selected[0], (error) => {
       if (error) return;
       api.current?.setCycleMode(shouldLoop ? "loopOne" : "one");
@@ -236,7 +246,7 @@ export function Leo3D({ pose, action, onPet, compact = false }: ActorProps) {
   }, [compact, playClip]);
 
   return (
-    <div className={`leo-3d rigged-leo ${compact ? "compact" : ""}`} role="group" aria-label={`3D Leo is performing: ${action}`}>
+    <div className={`leo-3d rigged-leo ${compact ? "compact" : ""}`} role="group" aria-label={`3D Leo is performing: ${action}`} data-animation-clip={selectedClipName} data-animation-cycle={selectedCycleMode}>
       {status !== "fallback" && (
         <iframe
           ref={iframe}
@@ -283,7 +293,12 @@ function FallbackDog({ action, onPet }: Pick<ActorProps, "action" | "onPet">) {
   useEffect(() => {
     const preferred = ["walk", "run", "come", "zoomies"].includes(action.toLowerCase()) ? "walking" : "idle";
     const selected = Object.entries(actions).find(([name]) => name.toLowerCase().includes(preferred))?.[1];
-    selected?.reset().fadeIn(0.22).play();
+    if (selected) {
+      selected.reset();
+      selected.setLoop(THREE.LoopOnce, 1);
+      selected.clampWhenFinished = true;
+      selected.fadeIn(0.22).play();
+    }
     return () => { selected?.fadeOut(0.18); };
   }, [action, actions]);
 
