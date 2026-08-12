@@ -21,6 +21,10 @@ Original prompt: Yes but now dog feels still, make him to change behaviors once 
 - End-to-end browser proof: Ready uses `Idle_1 / one`; Come uses `Walk_F_IP / one` then `Idle_1 / one`; Sit holds `Sitting_loop / one`; an autonomous look-around returns to that sitting pose; Sleep alone transitions from `Lie_Sleep_start / one` to `Lie_Sleep_loop / loopOne`.
 - Final mobile check at 390x844 holds Sit with `cycle=one`, has no horizontal overflow, and the browser console has zero errors.
 - Commit `abe18ff` deployed successfully to GitHub Pages. The live bundle `index-CN1vmfzg.js` reports `Idle_1 / one`, keeps `Sit` at `Sitting_loop / one`, and returns there after an autonomous look-around with zero console errors.
+- Audited all 25 commands plus petting across 130 available model clips with early, middle, and late screenshots. Broken framing was confirmed for Jump, Sleep/Wake, and low actions; Paw, Beg, and Roll over were mapped to unrelated transition clips.
+- Added action-aware standard/low/jump camera framing, safe full-clip mappings, and removed premature internal pose resets. Sleep keeps its deliberate transition to the breathing loop.
+- Aligned long command timers to actual clip duration, retained finite locomotion loops only while their command is active, and auto-collapsed the More panel so it no longer hides low actions.
+- Final local QA covers the problematic animation families on desktop and 390x844 mobile: Jump remains fully framed, low/sleep actions stay visible, the command panel collapses, locomotion loops only while active, no horizontal overflow, and zero browser console errors.
 
 ## TODO
 

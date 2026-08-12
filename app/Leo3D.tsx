@@ -51,24 +51,24 @@ const actionClipHints: Record<string, string[]> = {
   sit: ["sitting start", "sitting loop"],
   down: ["lie start", "lie loop"],
   stay: ["sitting loop", "idle"],
-  paw: ["sitting loop", "sitting start"],
+  paw: ["sitting loop"],
   speak: ["idle 3", "idle 4", "idle"],
   spin: ["turn 180 l ip", "turn 180 r ip", "turn"],
   walk: ["walk f ip", "walk"],
   run: ["run f ip", "run"],
   jump: ["jump place", "jump up vert", "jump"],
-  "roll-over": ["lie start", "lie loop 2", "lie"],
-  beg: ["sitting start", "sitting loop"],
-  sniff: ["eatdrink start", "eat loop", "idle 2"],
-  dig: ["digging start", "digging loop"],
+  "roll-over": ["lie loop 2", "lie loop"],
+  beg: ["sitting loop"],
+  sniff: ["eat loop", "eat 2", "idle 2"],
+  dig: ["digging loop", "digging start"],
   stretch: ["crouch idle start", "lie start"],
   zoomies: ["run f ip", "trot f ip", "run"],
-  shake: ["idle 5 start", "idle 5 loop", "idle 4"],
+  shake: ["idle 5 loop", "idle 5 start", "idle 4"],
   scratch: ["idle 5 loop", "idle 4", "sitting loop"],
   lick: ["eat 2", "eat loop", "idle 3"],
   "look-around": ["idle 2", "idle 4", "idle"],
-  play: ["crouch idle start", "crouch idle loop", "crouch"],
-  treat: ["eatdrink start", "eat 2", "eat loop"],
+  play: ["crouch idle loop", "crouch idle start", "crouch"],
+  treat: ["eat loop", "eat 2", "eatdrink start"],
   sleep: ["lie sleep start", "lie sleep loop"],
   wake: ["lie sleep end", "lie end", "idle"],
   release: ["idle 1", "idle"],
@@ -82,6 +82,26 @@ const poseClipHints: Record<LeoPose, string[]> = {
   paw: ["sitting loop", "idle"],
   sleep: ["lie sleep loop", "lie loop"],
 };
+
+type CameraPreset = "standard" | "low" | "jump";
+
+const lowCameraActions = new Set([
+  "down", "roll-over", "sniff", "dig", "stretch", "scratch", "lick", "play", "treat", "sleep", "wake",
+]);
+
+const finiteLoopActions = new Set(["come", "walk", "run", "zoomies"]);
+
+function cameraPresetFor(action: string, pose: LeoPose): CameraPreset {
+  if (action.toLowerCase() === "jump") return "jump";
+  if (lowCameraActions.has(action.toLowerCase()) || ["down", "play", "sleep"].includes(pose)) return "low";
+  return "standard";
+}
+
+function cameraFrameFor(preset: CameraPreset, compact: boolean) {
+  if (preset === "jump") return { position: compact ? [84, -100, 47] : [80, -95, 45], target: [-1.3, -5.9, 38] };
+  if (preset === "low") return { position: compact ? [62, -74, 18] : [58, -70, 17], target: [-1.3, -5.9, 8.5] };
+  return { position: compact ? [50, -60, 22] : [47, -56, 22], target: [-1.3, -5.9, 17.2] };
+}
 
 function loadViewerScript() {
   if (window.Sketchfab) return Promise.resolve();
@@ -124,12 +144,21 @@ export function Leo3D({ pose, action, onPet, compact = false }: ActorProps) {
   const [status, setStatus] = useState<"loading" | "ready" | "fallback">("loading");
   const [selectedClipName, setSelectedClipName] = useState("");
   const [selectedCycleMode, setSelectedCycleMode] = useState<"one" | "loopOne">("one");
+  const [selectedCameraPreset, setSelectedCameraPreset] = useState<CameraPreset>("standard");
   const actionRef = useRef(action);
   const poseRef = useRef(pose);
 
   useEffect(() => {
     onPetRef.current = onPet;
   }, [onPet]);
+
+  const frameCamera = useCallback((nextAction: string, nextPose: LeoPose, duration = 0.28) => {
+    if (!api.current) return;
+    const preset = cameraPresetFor(nextAction, nextPose);
+    const frame = cameraFrameFor(preset, compact);
+    setSelectedCameraPreset(preset);
+    api.current.setCameraLookAt(frame.position, frame.target, duration);
+  }, [compact]);
 
   const playBasePose = useCallback((nextPose: LeoPose) => {
     if (!api.current || clips.current.length === 0) return;
@@ -139,12 +168,13 @@ export function Leo3D({ pose, action, onPet, compact = false }: ActorProps) {
     const cycleMode = nextPose === "sleep" ? "loopOne" : "one";
     setSelectedClipName(selected[1]);
     setSelectedCycleMode(cycleMode);
+    frameCamera("ready", nextPose);
     api.current.setCurrentAnimationByUID(selected[0], () => {
       api.current?.setCycleMode(cycleMode);
       api.current?.setSpeed(nextPose === "sleep" ? 0.72 : 1);
       api.current?.seekTo(0, () => api.current?.play());
     });
-  }, []);
+  }, [frameCamera]);
 
   const playClip = useCallback((nextAction: string, nextPose: LeoPose, forceLoop?: boolean) => {
     if (!api.current || clips.current.length === 0) return;
@@ -156,21 +186,21 @@ export function Leo3D({ pose, action, onPet, compact = false }: ActorProps) {
     const selected = chooseClip(clips.current, hints);
     if (!selected) return;
     setSelectedClipName(selected[1]);
-    const shouldLoop = forceLoop ?? false;
+    const shouldLoop = forceLoop ?? finiteLoopActions.has(normalizedAction);
     setSelectedCycleMode(shouldLoop ? "loopOne" : "one");
+    frameCamera(normalizedAction, nextPose);
     api.current.setCurrentAnimationByUID(selected[0], (error) => {
       if (error) return;
       api.current?.setCycleMode(shouldLoop ? "loopOne" : "one");
       api.current?.setSpeed(nextAction === "zoomies" ? 1.35 : nextAction === "sleep" ? 0.72 : 1);
       api.current?.seekTo(0, () => api.current?.play());
-      if (!shouldLoop) {
-        const requestedAction = nextAction;
+      if (!shouldLoop && normalizedAction === "sleep") {
         returnToPoseTimer.current = setTimeout(() => {
-          if (actionRef.current === requestedAction) playBasePose(nextPose);
+          if (actionRef.current.toLowerCase() === "sleep") playBasePose("sleep");
         }, Math.max(450, selected[2] * 1000 + 80));
       }
     });
-  }, [playBasePose]);
+  }, [frameCamera, playBasePose]);
 
   useEffect(() => {
     actionRef.current = action;
@@ -216,11 +246,7 @@ export function Leo3D({ pose, action, onPet, compact = false }: ActorProps) {
                 clips.current = animations;
                 viewerApi.setFov(compact ? 34 : 38);
                 viewerApi.focusOnVisibleGeometries(() => {
-                  window.setTimeout(() => viewerApi.setCameraLookAt(
-                    compact ? [50, -60, 22] : [47, -56, 22],
-                    [-1.3, -5.9, 17.2],
-                    0.35,
-                  ), 600);
+                  window.setTimeout(() => frameCamera(actionRef.current, poseRef.current, 0.35), 300);
                 });
                 setStatus("ready");
                 playClip(actionRef.current, poseRef.current);
@@ -243,10 +269,10 @@ export function Leo3D({ pose, action, onPet, compact = false }: ActorProps) {
       api.current?.pause();
       api.current = null;
     };
-  }, [compact, playClip]);
+  }, [compact, frameCamera, playClip]);
 
   return (
-    <div className={`leo-3d rigged-leo ${compact ? "compact" : ""}`} role="group" aria-label={`3D Leo is performing: ${action}`} data-animation-clip={selectedClipName} data-animation-cycle={selectedCycleMode}>
+    <div className={`leo-3d rigged-leo ${compact ? "compact" : ""}`} role="group" aria-label={`3D Leo is performing: ${action}`} data-animation-clip={selectedClipName} data-animation-cycle={selectedCycleMode} data-camera-preset={selectedCameraPreset}>
       {status !== "fallback" && (
         <iframe
           ref={iframe}

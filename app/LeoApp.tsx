@@ -64,27 +64,27 @@ const aliases: Record<string, string[]> = {
 
 const actionMap: Record<string, { pose: LeoPose; message: string; duration: number }> = {
   come: { pose: "stand", message: "Leo pads over, slows down, then looks up at you.", duration: 1700 },
-  sit: { pose: "sit", message: "Leo shifts his weight back and sits, eyes still on you.", duration: 900 },
-  down: { pose: "down", message: "Leo lowers his chest, stretches his paws, and settles.", duration: 1100 },
+  sit: { pose: "sit", message: "Leo shifts his weight back and sits, eyes still on you.", duration: 1100 },
+  down: { pose: "down", message: "Leo lowers his chest, stretches his paws, and settles.", duration: 1500 },
   stay: { pose: "sit", message: "Leo stays exactly there — alert, patient, and very serious.", duration: 800 },
   paw: { pose: "paw", message: "Leo lifts one paw and places it carefully in your hand.", duration: 1400 },
   speak: { pose: "stand", message: "Woof! One clear Jack Russell announcement.", duration: 700 },
-  spin: { pose: "stand", message: "Leo turns in one quick, delighted circle.", duration: 1250 },
+  spin: { pose: "stand", message: "Leo turns in one quick, delighted circle.", duration: 2150 },
   walk: { pose: "stand", message: "Leo settles into an easy four-beat walk.", duration: 2800 },
   run: { pose: "stand", message: "Leo accelerates into a bright, springy terrier run.", duration: 2400 },
-  jump: { pose: "stand", message: "Leo crouches, pushes off, and lands back on all four paws.", duration: 1900 },
-  "roll-over": { pose: "down", message: "Leo lowers one shoulder and rolls all the way over.", duration: 2500 },
-  beg: { pose: "paw", message: "Leo balances up, both front paws lifted for a moment.", duration: 2000 },
-  sniff: { pose: "stand", message: "Nose down, Leo follows an invisible trail across the floor.", duration: 2400 },
-  dig: { pose: "play", message: "Leo braces and scrapes forward with quick alternating paws.", duration: 2200 },
-  stretch: { pose: "play", message: "Leo reaches forward into one long, satisfying stretch.", duration: 1900 },
+  jump: { pose: "stand", message: "Leo crouches, pushes off, and lands back on all four paws.", duration: 1600 },
+  "roll-over": { pose: "down", message: "Leo lowers one shoulder and rolls all the way over.", duration: 4200 },
+  beg: { pose: "paw", message: "Leo balances up, both front paws lifted for a moment.", duration: 1700 },
+  sniff: { pose: "stand", message: "Nose down, Leo follows an invisible trail across the floor.", duration: 2950 },
+  dig: { pose: "play", message: "Leo braces and scrapes forward with quick alternating paws.", duration: 4200 },
+  stretch: { pose: "play", message: "Leo reaches forward into one long, satisfying stretch.", duration: 900 },
   zoomies: { pose: "stand", message: "Leo bursts into a tight loop of joyful terrier zoomies.", duration: 3600 },
   shake: { pose: "stand", message: "Leo shakes from nose to tail, ears flapping at the end.", duration: 1800 },
   scratch: { pose: "sit", message: "Leo tips his head and scratches carefully behind one ear.", duration: 2400 },
   lick: { pose: "sit", message: "Leo curls his tongue over his nose in one quick lick.", duration: 1200 },
   "look-around": { pose: "stand", message: "Leo scans the room, ears and nose working together.", duration: 2200 },
   play: { pose: "play", message: "Front paws down, tail up: Leo is ready to play.", duration: 1700 },
-  treat: { pose: "sit", message: "Sniff… crunch… and one very satisfied nose-lick.", duration: 1600 },
+  treat: { pose: "sit", message: "Sniff… crunch… and one very satisfied nose-lick.", duration: 2950 },
   sleep: { pose: "sleep", message: "Leo circles once, curls in, and breathes softly.", duration: 1300 },
   wake: { pose: "stand", message: "Leo stretches from nose to tail and stands up.", duration: 1100 },
   release: { pose: "stand", message: "Leo is free again, waiting to see what happens next.", duration: 450 },
@@ -573,11 +573,15 @@ function CommandDock({ state, command, setCommand, submit, dispatch, listening, 
 }) {
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? commands : commands.slice(0, 6);
+  const runCommand = (id: string) => {
+    dispatch(id);
+    setExpanded(false);
+  };
   return (
     <aside className="command-dock" aria-label="Interact with Leo">
       <div className="dock-message"><span className={state.busy ? "live" : ""} /> <b>{state.busy ? "Leo is moving" : state.stay ? "Leo is staying" : "Leo is with you"}</b><p>{state.message}</p></div>
       <div className="command-grid">
-        {shown.map((item) => <button key={item.id} onClick={() => dispatch(item.id)} title={item.hint}><i>{item.icon}</i><span>{item.label}</span></button>)}
+        {shown.map((item) => <button key={item.id} onClick={() => runCommand(item.id)} title={item.hint}><i>{item.icon}</i><span>{item.label}</span></button>)}
         <button className="more-command" onClick={() => setExpanded(!expanded)}><i>{expanded ? "−" : "+"}</i><span>{expanded ? "Less" : "More"}</span></button>
       </div>
       <form className="command-input" onSubmit={submit}>

@@ -56,7 +56,7 @@ test("Ready keeps the pose established by the completed command", async () => {
 test("resting poses hold instead of endlessly replaying a transition", async () => {
   const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
   assert.match(source, /stand: \["idle 1", "idle 2", "idle 4", "idle"\]/);
-  assert.match(source, /shouldLoop = forceLoop \?\? false/);
+  assert.match(source, /shouldLoop = forceLoop \?\? finiteLoopActions\.has\(normalizedAction\)/);
   assert.match(source, /data-animation-cycle=\{selectedCycleMode\}/);
   assert.match(source, /selected\.setLoop\(THREE\.LoopOnce, 1\)/);
   assert.match(source, /selected\.clampWhenFinished = true/);
@@ -68,4 +68,23 @@ test("autonomous behavior returns to the user's requested pose", async () => {
   assert.match(source, /const returnPose = current\.pose/);
   assert.match(source, /pose: returnPose,\s*action: "Ready"/);
   assert.doesNotMatch(source, /pose: behavior\.endPose/);
+});
+
+test("every animation family uses a safe camera frame and complete clips", async () => {
+  const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
+  assert.match(source, /type CameraPreset = "standard" \| "low" \| "jump"/);
+  assert.match(source, /data-camera-preset=\{selectedCameraPreset\}/);
+  assert.match(source, /"roll-over": \["lie loop 2", "lie loop"\]/);
+  assert.match(source, /dig: \["digging loop", "digging start"\]/);
+  assert.match(source, /treat: \["eat loop", "eat 2", "eatdrink start"\]/);
+  assert.match(source, /!shouldLoop && normalizedAction === "sleep"/);
+  assert.doesNotMatch(source, /actionRef\.current === requestedAction/);
+});
+
+test("command timing follows the actual selected 3D clips", async () => {
+  const appSource = await readFile(new URL("../app/LeoApp.tsx", import.meta.url), "utf8");
+  assert.match(appSource, /spin: \{[^}]+duration: 2150/);
+  assert.match(appSource, /"roll-over": \{[^}]+duration: 4200/);
+  assert.match(appSource, /dig: \{[^}]+duration: 4200/);
+  assert.match(appSource, /const runCommand = \(id: string\) => \{\s*dispatch\(id\);\s*setExpanded\(false\)/);
 });
