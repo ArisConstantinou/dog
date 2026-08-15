@@ -26,6 +26,7 @@ test("server-renders Leo's interactive 3D companion", async () => {
 test("Leo uses a rigged model instead of disconnected primitive shapes", async () => {
   const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
   assert.match(source, /SketchfabAnimation/);
+  assert.match(source, /HOSTED_MODEL_ENABLED = true/);
   assert.match(source, /leo-rigged-fallback\.glb/);
   assert.doesNotMatch(source, /sphereGeometry|capsuleGeometry/);
 

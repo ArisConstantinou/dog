@@ -205,6 +205,26 @@ export default function LeoApp() {
   }, [state]);
 
   useEffect(() => {
+    window.render_game_to_text = () => JSON.stringify({
+      coordinateSystem: "The 3D actor is centered inside the visible stage; screen x increases right and y increases down.",
+      world,
+      leo: {
+        pose: state.pose,
+        action: state.action,
+        busy: state.busy,
+        staying: state.stay,
+        energy: state.energy,
+        joy: state.joy,
+        bond: state.bond,
+        calm: state.calm,
+      },
+      visibleControls: commands.map(({ id }) => id),
+      memoryCount: memories.length,
+    });
+    return () => { delete window.render_game_to_text; };
+  }, [memories.length, state, world]);
+
+  useEffect(() => {
     try {
       localStorage.setItem("leo-memories-v1", JSON.stringify(memories));
     } catch { console.warn("Leo memories could not be persisted."); }
@@ -312,7 +332,7 @@ export default function LeoApp() {
     setWorldsOpen(false);
   };
 
-  const dispatch = useCallback((id: string) => {
+  const dispatch = useCallback((id: string, source: "user" | "autonomous" = "user") => {
     const action = actionMap[id];
     if (!action) {
       setState((prev) => ({ ...prev, message: "Leo tilts his head. Try one of the actions below." }));
@@ -326,10 +346,10 @@ export default function LeoApp() {
       message: action.message,
       busy: true,
       stay: id === "stay" ? true : id === "release" || id === "come" ? false : prev.stay,
-      energy: clamp(prev.energy + (id === "sleep" ? 10 : id === "play" || id === "spin" ? -4 : 0)),
-      joy: clamp(prev.joy + (id === "play" ? 5 : id === "treat" ? 3 : id === "paw" ? 2 : 1)),
-      bond: clamp(prev.bond + (id === "paw" || id === "treat" ? 2 : 0)),
-      calm: clamp(prev.calm + (id === "sleep" || id === "down" ? 4 : id === "play" ? -2 : 0)),
+      energy: source === "autonomous" ? prev.energy : clamp(prev.energy + (id === "sleep" ? 10 : id === "play" || id === "spin" ? -4 : 0)),
+      joy: source === "autonomous" ? prev.joy : clamp(prev.joy + (id === "play" ? 5 : id === "treat" ? 3 : id === "paw" ? 2 : 1)),
+      bond: source === "autonomous" ? prev.bond : clamp(prev.bond + (id === "paw" || id === "treat" ? 2 : 0)),
+      calm: source === "autonomous" ? prev.calm : clamp(prev.calm + (id === "sleep" || id === "down" ? 4 : id === "play" ? -2 : 0)),
       updatedAt: Date.now(),
     }));
     if (id === "speak") playBark();

@@ -33,3 +33,31 @@ Original prompt: Yes but now dog feels still, make him to change behaviors once 
 ## Suggestions
 
 - Future Leo-specific work can tune behavior weights and timings from real videos of Leo rather than changing the scheduler architecture.
+
+## 2026-08-15 — Leo likeness references
+
+- Received 10 additional photos covering Leo's face, right profile, underside, top/back, tail, collar, and several body markings.
+- Confirmed the primary viewer model is a non-downloadable externally hosted Sketchfab asset; it cannot be converted into the requested locally editable Leo mesh from this repository.
+- Confirmed the bundled fallback is locally editable: one skinned mesh, 34 bones, with Idle and Walking clips.
+- Next: visually inspect both the hosted and local models, then make the local rig the customization path and add Leo-specific coat/anatomy treatment without changing photos as frames.
+
+### Reference and runtime findings
+
+- The new photos establish Leo's narrow muzzle, black/tan head with a slim white blaze, folded black ears, white freckled back, right shoulder spot, dark tail base, white tail tip, underside, paws, and teal collar.
+- Still missing for high-fidelity anatomy: level full-body front, rear, left, and right standing views plus diagonal standing views. Several supplied close-ups contain motion blur or hand/pose occlusion, so they are useful for markings but not photogrammetric shape reconstruction.
+- Implemented a local experimental coat pass on the bundled skinned mesh using bone-aware vertex colors, smoothed normals, a tracked teal collar, and corrected fallback camera framing. User photos remain outside the public repository.
+- Added `render_game_to_text` state output and non-repeating autonomous behaviors that respect busy, stay, and sleep states.
+- Verified `npm run lint`, `npm run test` (3/3), and `npm run build:pages`. Desktop Playwright screenshot confirms the complete actor is in frame and the state hook records commands.
+- Important blocker: the local fallback has only Idle and Walking clips. A Sit test correctly reached persisted `pose: sit` in state, but the local mesh remained visually standing. The hosted 130-animation model is non-downloadable and its embedded viewer fell back locally/live under automated Chromium. Do not call this advanced or complete.
+- Found a downloadable CC-BY Jack Russell base with 8.1k vertices, but it is static, requires Sketchfab login to download, and would still need a complete quadruped rig and animation library. No download or login was performed.
+- No commit/push yet: the experimental fallback is not the requested photorealistic, fully animated Leo.
+
+### Old hosted dog removal
+
+- Verified in the user's open mobile localhost tab that the RedDeer Sketchfab iframe was still the visible actor.
+- Disabled the hosted model path, removed its visible credit from the local-only state, rebuilt Pages, and reloaded the exact open tab.
+- Browser evidence after reload: zero `.leo-viewer-frame` iframes, one local WebGL canvas, and zero old RedDeer credit labels.
+- Reverted this display decision after visual review: the local low-poly fallback is visibly unacceptable as Leo. The hosted realistic rig is restored temporarily; the fallback must not be presented as the customized result.
+- Added the missing large black rear-flank patch to both relevant sides of the hidden local mesh, based on the user's marked reference.
+- Rendered the local fallback directly and visually confirmed the new rear-flank patch at the hip; the first QA render exposed a stale duplicate autonomy effect that referenced an undefined ref and blacked out the scene.
+- Removed that duplicate scheduler, rebuilt, and reran the render with no page-error artifact. The restored hosted primary was then checked at 2560px and 390x844: one viewer iframe, no horizontal overflow, all visible buttons at least 44px, and zero console errors.

@@ -1,8 +1,9 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Html, OrbitControls, useAnimations, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LeoPose } from "./leo-data";
 
@@ -43,6 +44,7 @@ declare global {
 
 const MODEL_UID = "e75a550f4a9b4d18bc1b45ca2e6f56d2";
 const VIEWER_SCRIPT = "https://static.sketchfab.com/api/sketchfab-viewer-1.12.1.js";
+const HOSTED_MODEL_ENABLED = true;
 
 const actionClipHints: Record<string, string[]> = {
   ready: ["idle 1", "idle"],
@@ -141,7 +143,9 @@ export function Leo3D({ pose, action, onPet, compact = false }: ActorProps) {
   const clips = useRef<SketchfabAnimation[]>([]);
   const onPetRef = useRef(onPet);
   const returnToPoseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "fallback">("loading");
+  const [status, setStatus] = useState<"loading" | "ready" | "fallback">(
+    HOSTED_MODEL_ENABLED ? "loading" : "fallback",
+  );
   const [selectedClipName, setSelectedClipName] = useState("");
   const [selectedCycleMode, setSelectedCycleMode] = useState<"one" | "loopOne">("one");
   const [selectedCameraPreset, setSelectedCameraPreset] = useState<CameraPreset>("standard");
@@ -209,6 +213,7 @@ export function Leo3D({ pose, action, onPet, compact = false }: ActorProps) {
   }, [action, pose, playClip]);
 
   useEffect(() => {
+    if (!HOSTED_MODEL_ENABLED) return;
     let cancelled = false;
     let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -285,7 +290,7 @@ export function Leo3D({ pose, action, onPet, compact = false }: ActorProps) {
       {status === "loading" && <div className="leo-model-loading"><i />Building Leo&rsquo;s 3D movement&hellip;</div>}
       <button className="pet-leo-control" type="button" onClick={onPet}>Pet Leo</button>
       <span className="drag-3d">Drag to look · real skeletal animation</span>
-      <a className="model-credit" href="https://sketchfab.com/3d-models/jack-russell-terrier-animated-130-animations-e75a550f4a9b4d18bc1b45ca2e6f56d2" target="_blank" rel="noreferrer">3D model by RedDeer</a>
+      {status !== "fallback" && <a className="model-credit" href="https://sketchfab.com/3d-models/jack-russell-terrier-animated-130-animations-e75a550f4a9b4d18bc1b45ca2e6f56d2" target="_blank" rel="noreferrer">3D model by RedDeer</a>}
     </div>
   );
 }
@@ -295,7 +300,7 @@ function LocalRiggedLeo({ action, onPet, compact }: Pick<ActorProps, "action" | 
     <Canvas
       shadows
       dpr={[1, 1.6]}
-      camera={{ position: compact ? [7, 4.2, 7] : [8, 4.8, 8], fov: 34 }}
+      camera={{ position: compact ? [9, 4.8, 9] : [10, 5.3, 10], fov: 40 }}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
     >
       <ambientLight intensity={1.8} />
@@ -305,13 +310,15 @@ function LocalRiggedLeo({ action, onPet, compact }: Pick<ActorProps, "action" | 
         <FallbackDog action={action} onPet={onPet} />
       </Suspense>
       <ContactShadows position={[0, 0.02, 0]} opacity={0.35} scale={9} blur={2.2} far={8} />
-      <OrbitControls target={[0, 1.65, 0]} enablePan={false} enableZoom={false} minPolarAngle={Math.PI * 0.22} maxPolarAngle={Math.PI * 0.5} />
+      <OrbitControls target={[0.15, 1.75, 0]} enablePan={false} enableZoom={false} minPolarAngle={Math.PI * 0.22} maxPolarAngle={Math.PI * 0.5} />
     </Canvas>
   );
 }
 
 function FallbackDog({ action, onPet }: Pick<ActorProps, "action" | "onPet">) {
   const group = useRef<THREE.Group>(null);
+  const collar = useRef<THREE.Mesh>(null);
+  const collarAnchor = useRef<{ base: THREE.Bone; head: THREE.Bone } | null>(null);
   const { scene, animations } = useGLTF(`${import.meta.env.BASE_URL}models/leo-rigged-fallback.glb`);
   const clonedScene = useMemo(() => scene.clone(), [scene]);
   const { actions } = useAnimations(animations, group);
@@ -329,21 +336,109 @@ function FallbackDog({ action, onPet }: Pick<ActorProps, "action" | "onPet">) {
   }, [action, actions]);
 
   useEffect(() => {
+    clonedScene.updateMatrixWorld(true);
     clonedScene.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) return;
       object.castShadow = true;
       object.receiveShadow = true;
-      const material = object.material as THREE.MeshStandardMaterial;
-      material.color.set("#eee9df");
-      material.roughness = 0.82;
+      const editableGeometry = object.geometry.clone();
+      editableGeometry.deleteAttribute("normal");
+      object.geometry = mergeVertices(editableGeometry, 0.00001);
+      object.geometry.computeVertexNormals();
+
+      const position = object.geometry.getAttribute("position");
+      const colors = new Float32Array(position.count * 3);
+      const point = new THREE.Vector3();
+      for (let index = 0; index < position.count; index += 1) {
+        point.fromBufferAttribute(position, index);
+        if (object instanceof THREE.SkinnedMesh) object.applyBoneTransform(index, point);
+        point.applyMatrix4(object.matrixWorld);
+        const color = leoCoatColor(point);
+        colors[index * 3] = color.r;
+        colors[index * 3 + 1] = color.g;
+        colors[index * 3 + 2] = color.b;
+      }
+      object.geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+      const source = object.material as THREE.MeshStandardMaterial;
+      const material = source.clone();
+      material.color.set("#ffffff");
+      material.vertexColors = true;
+      material.roughness = 0.88;
+      material.metalness = 0;
+      material.flatShading = false;
+      material.needsUpdate = true;
+      object.material = material;
     });
+
+    const base = clonedScene.getObjectByName("Bone002");
+    const head = clonedScene.getObjectByName("Bone003");
+    if (base instanceof THREE.Bone && head instanceof THREE.Bone) collarAnchor.current = { base, head };
   }, [clonedScene]);
+
+  useFrame(() => {
+    if (!group.current || !collar.current || !collarAnchor.current) return;
+    const base = new THREE.Vector3();
+    const head = new THREE.Vector3();
+    collarAnchor.current.base.getWorldPosition(base);
+    collarAnchor.current.head.getWorldPosition(head);
+    const midpoint = base.clone().lerp(head, 0.66);
+    group.current.worldToLocal(midpoint);
+    collar.current.position.copy(midpoint);
+
+    const direction = head.sub(base).normalize();
+    const parentQuaternion = new THREE.Quaternion();
+    group.current.getWorldQuaternion(parentQuaternion).invert();
+    direction.applyQuaternion(parentQuaternion);
+    collar.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
+  });
 
   return (
     <group ref={group} rotation={[0, -0.78, 0]} position={[0, 0, 0]} scale={0.85} onPointerDown={(event) => { event.stopPropagation(); onPet(); }}>
       <primitive object={clonedScene} />
+      <mesh ref={collar} castShadow>
+        <torusGeometry args={[0.47, 0.068, 12, 48]} />
+        <meshStandardMaterial color="#168b95" roughness={0.66} metalness={0.04} />
+      </mesh>
     </group>
   );
+}
+
+const leoWhite = new THREE.Color("#e9e4d9");
+const leoBlack = new THREE.Color("#171917");
+const leoTan = new THREE.Color("#9a6544");
+const leoGrey = new THREE.Color("#a8a79f");
+
+function ellipsoid(point: THREE.Vector3, center: [number, number, number], radius: [number, number, number]) {
+  const dx = (point.x - center[0]) / radius[0];
+  const dy = (point.y - center[1]) / radius[1];
+  const dz = (point.z - center[2]) / radius[2];
+  return dx * dx + dy * dy + dz * dz < 1;
+}
+
+function leoCoatColor(point: THREE.Vector3) {
+  const color = leoWhite.clone();
+
+  // Leo's black cap and ears, with the narrow white blaze visible in the references.
+  if (ellipsoid(point, [2.32, 3.3, -0.31], [0.95, 0.8, 1.12])) color.copy(leoBlack);
+  if (point.x > 2.2 && point.y > 3.05 && Math.abs(point.z + 0.31) < 0.16) color.copy(leoWhite);
+
+  // Warm tan brows, cheeks and the long terrier muzzle; nose remains deep black.
+  if (ellipsoid(point, [2.78, 3.16, -0.31], [0.84, 0.56, 0.72])) color.copy(leoTan);
+  if (point.x > 3.28 && point.y > 3.15) color.copy(leoBlack);
+  if (point.x > 2.75 && point.y < 3.18 && Math.abs(point.z + 0.31) < 0.33) color.copy(leoWhite);
+
+  // Body marks: shoulder spot, right-side oval and the dark tail base.
+  if (ellipsoid(point, [0.92, 2.28, 0.52], [0.48, 0.55, 0.33])) color.copy(leoBlack);
+  if (ellipsoid(point, [-1.03, 2.18, 0.55], [0.72, 0.68, 0.36])) color.copy(leoBlack);
+  if (ellipsoid(point, [-1.03, 2.24, -0.93], [0.88, 0.76, 0.5])) color.copy(leoBlack);
+  if (point.x < -2.02 && point.x > -2.72 && point.y > 2.62) color.copy(leoBlack);
+
+  // Sparse grey freckles across the white back, kept deterministic and attached to the mesh.
+  const speckle = Math.sin(point.x * 18.7 + point.z * 31.1) * Math.sin(point.y * 23.3 - point.x * 9.4);
+  if (point.x > -1.8 && point.x < 1.55 && point.y > 2.42 && speckle > 0.9) color.lerp(leoGrey, 0.72);
+
+  return color;
 }
 
 useGLTF.preload(`${import.meta.env.BASE_URL}models/leo-rigged-fallback.glb`);
