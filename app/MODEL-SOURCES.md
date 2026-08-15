@@ -1,6 +1,6 @@
 # Leo 3D model sources
 
-- Temporary primary rig: **Dog - Jack Russell Terrier** by RedDeer, rendered through Sketchfab until a genuinely suitable local Leo model is ready: https://sketchfab.com/3d-models/e75a550f4a9b4d18bc1b45ca2e6f56d2
-- Development-only fallback: **Animated Animales Low Poly / Animal Pack Vol. 2** by Quaternius, CC0. It is not an acceptable likeness of Leo and must not replace the primary model in production: https://opengameart.org/content/animated-animales-low-poly
+- Disabled legacy reference rig: **Dog - Jack Russell Terrier** by RedDeer. It remains documented for provenance but is no longer rendered by the application: https://sketchfab.com/3d-models/e75a550f4a9b4d18bc1b45ca2e6f56d2
+- Current editable local rig: **Animated Animales Low Poly / Animal Pack Vol. 2** by Quaternius, CC0, with an experimental Leo-specific coat and collar pass: https://opengameart.org/content/animated-animales-low-poly
 
-The hosted rig remains temporary and is not claimed as Leo's final likeness. The low-poly fallback exists only for technical continuity while a higher-detail local Leo mesh and complete quadruped motion library are prepared.
+The hosted dog must not be shown again. The current local rig is an editable technical prototype, not Leo's final likeness; it must eventually be replaced by a higher-detail local Leo mesh and complete quadruped motion library.

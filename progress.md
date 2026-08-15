@@ -61,3 +61,11 @@ Original prompt: Yes but now dog feels still, make him to change behaviors once 
 - Added the missing large black rear-flank patch to both relevant sides of the hidden local mesh, based on the user's marked reference.
 - Rendered the local fallback directly and visually confirmed the new rear-flank patch at the hip; the first QA render exposed a stale duplicate autonomy effect that referenced an undefined ref and blacked out the scene.
 - Removed that duplicate scheduler, rebuilt, and reran the render with no page-error artifact. The restored hosted primary was then checked at 2560px and 390x844: one viewer iframe, no horizontal overflow, all visible buttons at least 44px, and zero console errors.
+
+### Permanent removal of the old hosted dog
+
+- Found two local checkouts: port 5178 was serving `Documents/ChatGPT/Dog`, while this checkout had not yet fast-forwarded to commit `3c9adef`.
+- Fast-forwarded this checkout and disabled the hosted Sketchfab model again. The old RedDeer dog must no longer appear locally or on GitHub Pages.
+- The local editable prototype is intentionally used instead; it is still not the final high-detail Leo model.
+- Rebuilt Pages and moved the fixed `5178` preview from the stale `Documents/ChatGPT/Dog` checkout to this checkout. The exact listener now resolves to this project path.
+- Required web-game client and the actual in-app browser both confirm `iframeCount: 0`, `canvasCount: 1`, no RedDeer/Sketchfab credit, and no console errors. Mobile 390x844 has no horizontal overflow and no visible button below 44px.

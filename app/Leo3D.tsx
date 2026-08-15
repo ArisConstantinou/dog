@@ -44,7 +44,7 @@ declare global {
 
 const MODEL_UID = "e75a550f4a9b4d18bc1b45ca2e6f56d2";
 const VIEWER_SCRIPT = "https://static.sketchfab.com/api/sketchfab-viewer-1.12.1.js";
-const HOSTED_MODEL_ENABLED = true;
+const HOSTED_MODEL_ENABLED = false;
 
 const actionClipHints: Record<string, string[]> = {
   ready: ["idle 1", "idle"],
