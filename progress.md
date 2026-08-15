@@ -69,3 +69,11 @@ Original prompt: Yes but now dog feels still, make him to change behaviors once 
 - The local editable prototype is intentionally used instead; it is still not the final high-detail Leo model.
 - Rebuilt Pages and moved the fixed `5178` preview from the stale `Documents/ChatGPT/Dog` checkout to this checkout. The exact listener now resolves to this project path.
 - Required web-game client and the actual in-app browser both confirm `iframeCount: 0`, `canvasCount: 1`, no RedDeer/Sketchfab credit, and no console errors. Mobile 390x844 has no horizontal overflow and no visible button below 44px.
+
+### Supplied high-detail model integration
+
+- Received `jack_russell.glb` (5.09 MB) and verified it contains a smooth textured Jack Russell mesh, 8,643 uploaded vertices, and a 2048×2048 coat texture.
+- Confirmed the supplied file has no skeleton and no embedded animation clips. A local fox-quadruped auto-rig and a manually repositioned rig were both visually rejected because Walk and Sit tore the body mesh.
+- Replaced the 158 KB low-poly fallback with the supplied 5.09 MB model and preserved its smooth normals and fur texture.
+- Added finite, whole-body procedural motion for commands and four non-repeating idle variations. Movement ends after its command window; Sit/Stay and resting actions hold a distinct stable transform without replaying an animation loop.
+- Local browser proof at `http://127.0.0.1:5178/dog/` shows the supplied dog in the Sunroom with no low-poly facets or mesh tearing. The honest limitation remains that leg-level realistic actions require a professionally authored rig and skin weights for this exact mesh.

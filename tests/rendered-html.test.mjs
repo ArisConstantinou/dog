@@ -23,15 +23,16 @@ test("server-renders Leo's interactive 3D companion", async () => {
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
-test("Leo uses a rigged model instead of disconnected primitive shapes", async () => {
+test("Leo uses the supplied detailed model instead of disconnected primitive shapes", async () => {
   const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
   assert.match(source, /SketchfabAnimation/);
   assert.match(source, /HOSTED_MODEL_ENABLED = false/);
-  assert.match(source, /leo-rigged-fallback\.glb/);
+  assert.match(source, /leo-detailed\.glb/);
+  assert.match(source, /smooth local 3D motion/);
   assert.doesNotMatch(source, /sphereGeometry|capsuleGeometry/);
 
-  const fallback = await stat(new URL("../public/models/leo-rigged-fallback.glb", import.meta.url));
-  assert.ok(fallback.size > 100_000, "expected a real rigged binary model asset");
+  const detailed = await stat(new URL("../public/models/leo-detailed.glb", import.meta.url));
+  assert.ok(detailed.size > 4_000_000, "expected the supplied detailed binary model asset");
 });
 
 test("one-shot commands return Leo to Ready instead of looping forever", async () => {
@@ -59,8 +60,9 @@ test("resting poses hold instead of endlessly replaying a transition", async () 
   assert.match(source, /stand: \["idle 1", "idle 2", "idle 4", "idle"\]/);
   assert.match(source, /shouldLoop = forceLoop \?\? finiteLoopActions\.has\(normalizedAction\)/);
   assert.match(source, /data-animation-cycle=\{selectedCycleMode\}/);
-  assert.match(source, /selected\.setLoop\(THREE\.LoopOnce, 1\)/);
-  assert.match(source, /selected\.clampWhenFinished = true/);
+  assert.match(source, /\["sit", "stay", "paw", "beg", "treat"\]\.includes\(command\)/);
+  assert.match(source, /activeGait = .*elapsed </);
+  assert.match(source, /Math\.floor\(idleTime \/ 7\.5\) % 4/);
   assert.doesNotMatch(source, /\["ready", "stay"\]\.includes/);
 });
 

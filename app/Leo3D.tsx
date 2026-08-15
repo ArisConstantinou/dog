@@ -1,9 +1,8 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { ContactShadows, Html, OrbitControls, useAnimations, useGLTF } from "@react-three/drei";
+import { ContactShadows, Html, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LeoPose } from "./leo-data";
 
@@ -289,7 +288,7 @@ export function Leo3D({ pose, action, onPet, compact = false }: ActorProps) {
       {status === "fallback" && <LocalRiggedLeo action={action} onPet={onPet} compact={compact} />}
       {status === "loading" && <div className="leo-model-loading"><i />Building Leo&rsquo;s 3D movement&hellip;</div>}
       <button className="pet-leo-control" type="button" onClick={onPet}>Pet Leo</button>
-      <span className="drag-3d">Drag to look · real skeletal animation</span>
+      <span className="drag-3d">Drag to look · smooth local 3D motion</span>
       {status !== "fallback" && <a className="model-credit" href="https://sketchfab.com/3d-models/jack-russell-terrier-animated-130-animations-e75a550f4a9b4d18bc1b45ca2e6f56d2" target="_blank" rel="noreferrer">3D model by RedDeer</a>}
     </div>
   );
@@ -307,7 +306,7 @@ function LocalRiggedLeo({ action, onPet, compact }: Pick<ActorProps, "action" | 
       <hemisphereLight args={["#fff7e7", "#6f7b65", 1.25]} />
       <directionalLight castShadow position={[-4, 7, 5]} intensity={3.2} />
       <Suspense fallback={<Html center><span className="fallback-loading">Loading Leo&hellip;</span></Html>}>
-        <FallbackDog action={action} onPet={onPet} />
+        <FallbackDog action={action} onPet={onPet} compact={compact} />
       </Suspense>
       <ContactShadows position={[0, 0.02, 0]} opacity={0.35} scale={9} blur={2.2} far={8} />
       <OrbitControls target={[0.15, 1.75, 0]} enablePan={false} enableZoom={false} minPolarAngle={Math.PI * 0.22} maxPolarAngle={Math.PI * 0.5} />
@@ -315,130 +314,100 @@ function LocalRiggedLeo({ action, onPet, compact }: Pick<ActorProps, "action" | 
   );
 }
 
-function FallbackDog({ action, onPet }: Pick<ActorProps, "action" | "onPet">) {
+function FallbackDog({ action, onPet, compact }: Pick<ActorProps, "action" | "onPet" | "compact">) {
   const group = useRef<THREE.Group>(null);
-  const collar = useRef<THREE.Mesh>(null);
-  const collarAnchor = useRef<{ base: THREE.Bone; head: THREE.Bone } | null>(null);
-  const { scene, animations } = useGLTF(`${import.meta.env.BASE_URL}models/leo-rigged-fallback.glb`);
+  const dog = useRef<THREE.Group>(null);
+  const actionStartedAt = useRef(0);
+  const { scene } = useGLTF(`${import.meta.env.BASE_URL}models/leo-detailed.glb`);
   const clonedScene = useMemo(() => scene.clone(), [scene]);
-  const { actions } = useAnimations(animations, group);
 
   useEffect(() => {
-    const preferred = ["walk", "run", "come", "zoomies"].includes(action.toLowerCase()) ? "walking" : "idle";
-    const selected = Object.entries(actions).find(([name]) => name.toLowerCase().includes(preferred))?.[1];
-    if (selected) {
-      selected.reset();
-      selected.setLoop(THREE.LoopOnce, 1);
-      selected.clampWhenFinished = true;
-      selected.fadeIn(0.22).play();
-    }
-    return () => { selected?.fadeOut(0.18); };
-  }, [action, actions]);
+    actionStartedAt.current = performance.now() / 1000;
+  }, [action]);
 
   useEffect(() => {
-    clonedScene.updateMatrixWorld(true);
     clonedScene.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) return;
       object.castShadow = true;
       object.receiveShadow = true;
-      const editableGeometry = object.geometry.clone();
-      editableGeometry.deleteAttribute("normal");
-      object.geometry = mergeVertices(editableGeometry, 0.00001);
-      object.geometry.computeVertexNormals();
-
-      const position = object.geometry.getAttribute("position");
-      const colors = new Float32Array(position.count * 3);
-      const point = new THREE.Vector3();
-      for (let index = 0; index < position.count; index += 1) {
-        point.fromBufferAttribute(position, index);
-        if (object instanceof THREE.SkinnedMesh) object.applyBoneTransform(index, point);
-        point.applyMatrix4(object.matrixWorld);
-        const color = leoCoatColor(point);
-        colors[index * 3] = color.r;
-        colors[index * 3 + 1] = color.g;
-        colors[index * 3 + 2] = color.b;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const source of materials) {
+        if (!(source instanceof THREE.MeshStandardMaterial)) continue;
+        source.roughness = 0.88;
+        source.metalness = 0;
+        if (source.map) source.map.colorSpace = THREE.SRGBColorSpace;
       }
-      object.geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-
-      const source = object.material as THREE.MeshStandardMaterial;
-      const material = source.clone();
-      material.color.set("#ffffff");
-      material.vertexColors = true;
-      material.roughness = 0.88;
-      material.metalness = 0;
-      material.flatShading = false;
-      material.needsUpdate = true;
-      object.material = material;
     });
-
-    const base = clonedScene.getObjectByName("Bone002");
-    const head = clonedScene.getObjectByName("Bone003");
-    if (base instanceof THREE.Bone && head instanceof THREE.Bone) collarAnchor.current = { base, head };
   }, [clonedScene]);
 
-  useFrame(() => {
-    if (!group.current || !collar.current || !collarAnchor.current) return;
-    const base = new THREE.Vector3();
-    const head = new THREE.Vector3();
-    collarAnchor.current.base.getWorldPosition(base);
-    collarAnchor.current.head.getWorldPosition(head);
-    const midpoint = base.clone().lerp(head, 0.66);
-    group.current.worldToLocal(midpoint);
-    collar.current.position.copy(midpoint);
+  useFrame((state, delta) => {
+    if (!group.current || !dog.current) return;
 
-    const direction = head.sub(base).normalize();
-    const parentQuaternion = new THREE.Quaternion();
-    group.current.getWorldQuaternion(parentQuaternion).invert();
-    direction.applyQuaternion(parentQuaternion);
-    collar.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
+    const now = performance.now() / 1000;
+    const elapsed = Math.max(0, now - actionStartedAt.current);
+    const command = action.toLowerCase();
+    const idleTime = state.clock.elapsedTime;
+    const idleBeat = Math.floor(idleTime / 7.5) % 4;
+    const activeGait = ["come", "walk", "run", "zoomies", "play"].includes(command) && elapsed < (command === "run" || command === "zoomies" ? 3.1 : 2.5);
+    const gaitSpeed = command === "run" || command === "zoomies" ? 11 : 7;
+    const gait = activeGait ? Math.sin(elapsed * gaitSpeed) : 0;
+
+    let targetY = 0;
+    let targetPitch = 0;
+    let targetRoll = 0;
+    let targetYaw = -0.12;
+    let scaleY = 1;
+
+    if (["sit", "stay", "paw", "beg", "treat"].includes(command)) {
+      targetY = -0.16;
+      targetPitch = -0.07;
+      scaleY = 0.94;
+    } else if (["down", "sleep", "roll-over"].includes(command)) {
+      targetY = -0.9;
+      targetRoll = command === "roll-over" && elapsed < 2.2 ? Math.min(elapsed / 2.2, 1) * Math.PI * 2 : Math.PI / 2;
+      scaleY = 0.96;
+    } else if (command === "jump" && elapsed < 1.45) {
+      targetY = Math.sin(Math.min(elapsed / 1.45, 1) * Math.PI) * 1.05;
+      targetPitch = -Math.sin(Math.min(elapsed / 1.45, 1) * Math.PI) * 0.13;
+    } else if (command === "spin" && elapsed < 1.7) {
+      targetYaw -= Math.min(elapsed / 1.7, 1) * Math.PI * 2;
+    } else if (["sniff", "lick"].includes(command) && elapsed < 2.2) {
+      targetPitch = 0.1 + Math.sin(elapsed * 5) * 0.04;
+      targetY = -0.08;
+    } else if (["speak", "shake", "scratch"].includes(command) && elapsed < 1.5) {
+      targetRoll = Math.sin(elapsed * 9) * 0.045;
+      scaleY = 1 + Math.sin(elapsed * 10) * 0.018;
+    } else if (command === "patted") {
+      targetRoll = -0.035;
+      targetYaw = -0.18;
+    } else if (!activeGait && ["ready", "idle", "wake"].includes(command)) {
+      if (idleBeat === 1) targetYaw -= 0.07;
+      if (idleBeat === 2) targetPitch = 0.025;
+      if (idleBeat === 3) targetRoll = 0.018;
+    }
+
+    if (activeGait) {
+      targetY += Math.abs(gait) * (command === "run" || command === "zoomies" ? 0.12 : 0.065);
+      targetRoll += gait * 0.025;
+      targetPitch -= Math.abs(gait) * 0.018;
+    }
+
+    const breathing = 1 + Math.sin(idleTime * 2.05) * 0.0045;
+    group.current.position.y = THREE.MathUtils.damp(group.current.position.y, targetY, 7, delta);
+    group.current.rotation.x = THREE.MathUtils.damp(group.current.rotation.x, targetPitch, 7, delta);
+    group.current.rotation.y = THREE.MathUtils.damp(group.current.rotation.y, targetYaw, 7, delta);
+    group.current.rotation.z = THREE.MathUtils.damp(group.current.rotation.z, targetRoll, 7, delta);
+    const modelScale = compact ? 0.18 : 0.17;
+    dog.current.scale.set(modelScale * breathing, modelScale * scaleY * breathing, modelScale * breathing);
   });
 
   return (
-    <group ref={group} rotation={[0, -0.78, 0]} position={[0, 0, 0]} scale={0.85} onPointerDown={(event) => { event.stopPropagation(); onPet(); }}>
-      <primitive object={clonedScene} />
-      <mesh ref={collar} castShadow>
-        <torusGeometry args={[0.47, 0.068, 12, 48]} />
-        <meshStandardMaterial color="#168b95" roughness={0.66} metalness={0.04} />
-      </mesh>
+    <group ref={group} onPointerDown={(event) => { event.stopPropagation(); onPet(); }}>
+      <group ref={dog} rotation={[0, 0, 0]}>
+        <primitive object={clonedScene} />
+      </group>
     </group>
   );
 }
 
-const leoWhite = new THREE.Color("#e9e4d9");
-const leoBlack = new THREE.Color("#171917");
-const leoTan = new THREE.Color("#9a6544");
-const leoGrey = new THREE.Color("#a8a79f");
-
-function ellipsoid(point: THREE.Vector3, center: [number, number, number], radius: [number, number, number]) {
-  const dx = (point.x - center[0]) / radius[0];
-  const dy = (point.y - center[1]) / radius[1];
-  const dz = (point.z - center[2]) / radius[2];
-  return dx * dx + dy * dy + dz * dz < 1;
-}
-
-function leoCoatColor(point: THREE.Vector3) {
-  const color = leoWhite.clone();
-
-  // Leo's black cap and ears, with the narrow white blaze visible in the references.
-  if (ellipsoid(point, [2.32, 3.3, -0.31], [0.95, 0.8, 1.12])) color.copy(leoBlack);
-  if (point.x > 2.2 && point.y > 3.05 && Math.abs(point.z + 0.31) < 0.16) color.copy(leoWhite);
-
-  // Warm tan brows, cheeks and the long terrier muzzle; nose remains deep black.
-  if (ellipsoid(point, [2.78, 3.16, -0.31], [0.84, 0.56, 0.72])) color.copy(leoTan);
-  if (point.x > 3.28 && point.y > 3.15) color.copy(leoBlack);
-  if (point.x > 2.75 && point.y < 3.18 && Math.abs(point.z + 0.31) < 0.33) color.copy(leoWhite);
-
-  // Body marks: shoulder spot, right-side oval and the dark tail base.
-  if (ellipsoid(point, [0.92, 2.28, 0.52], [0.48, 0.55, 0.33])) color.copy(leoBlack);
-  if (ellipsoid(point, [-1.03, 2.18, 0.55], [0.72, 0.68, 0.36])) color.copy(leoBlack);
-  if (ellipsoid(point, [-1.03, 2.24, -0.93], [0.88, 0.76, 0.5])) color.copy(leoBlack);
-  if (point.x < -2.02 && point.x > -2.72 && point.y > 2.62) color.copy(leoBlack);
-
-  // Sparse grey freckles across the white back, kept deterministic and attached to the mesh.
-  const speckle = Math.sin(point.x * 18.7 + point.z * 31.1) * Math.sin(point.y * 23.3 - point.x * 9.4);
-  if (point.x > -1.8 && point.x < 1.55 && point.y > 2.42 && speckle > 0.9) color.lerp(leoGrey, 0.72);
-
-  return color;
-}
-
-useGLTF.preload(`${import.meta.env.BASE_URL}models/leo-rigged-fallback.glb`);
+useGLTF.preload(`${import.meta.env.BASE_URL}models/leo-detailed.glb`);
