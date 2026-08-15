@@ -66,6 +66,15 @@ test("resting poses hold instead of endlessly replaying a transition", async () 
   assert.doesNotMatch(source, /\["ready", "stay"\]\.includes/);
 });
 
+test("Leo keeps the photographed coat patches on their correct sides", async () => {
+  const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
+  assert.match(source, /leoLeftRear/);
+  assert.match(source, /leoLeftTailBase/);
+  assert.match(source, /leoLeftSide/);
+  assert.match(source, /leo-side-patches-v7/);
+  assert.doesNotMatch(source, /leo-side-debug|#ff00ff/);
+});
+
 test("autonomous behavior returns to the user's requested pose", async () => {
   const source = await readFile(new URL("../app/LeoApp.tsx", import.meta.url), "utf8");
   assert.match(source, /const returnPose = current\.pose/);

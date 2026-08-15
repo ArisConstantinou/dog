@@ -326,18 +326,68 @@ function FallbackDog({ action, onPet, compact }: Pick<ActorProps, "action" | "on
   }, [action]);
 
   useEffect(() => {
+    const clonedMaterials: THREE.Material[] = [];
     clonedScene.traverse((object) => {
-      if (!(object instanceof THREE.Mesh)) return;
-      object.castShadow = true;
-      object.receiveShadow = true;
-      const materials = Array.isArray(object.material) ? object.material : [object.material];
-      for (const source of materials) {
-        if (!(source instanceof THREE.MeshStandardMaterial)) continue;
-        source.roughness = 0.88;
-        source.metalness = 0;
-        if (source.map) source.map.colorSpace = THREE.SRGBColorSpace;
-      }
+      if (!(object as THREE.Mesh).isMesh) return;
+      const mesh = object as THREE.Mesh;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      const sourceMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const materials = sourceMaterials.map((source) => {
+        if (!(source as THREE.MeshStandardMaterial).isMeshStandardMaterial) return source;
+        const material = (source as THREE.MeshStandardMaterial).clone();
+        clonedMaterials.push(material);
+        material.roughness = 0.88;
+        material.metalness = 0;
+        if (material.map) material.map.colorSpace = THREE.SRGBColorSpace;
+        material.onBeforeCompile = (shader) => {
+          shader.vertexShader = shader.vertexShader
+            .replace(
+              "#include <common>",
+              "#include <common>\nvarying vec3 vLeoModelPosition;",
+            )
+            .replace(
+              "#include <begin_vertex>",
+              "#include <begin_vertex>\nvLeoModelPosition = position;",
+            );
+          shader.fragmentShader = shader.fragmentShader
+            .replace(
+              "#include <common>",
+              `#include <common>
+varying vec3 vLeoModelPosition;
+
+float leoPatchEllipsoid(vec3 point, vec3 center, vec3 radius) {
+  vec3 normalizedPoint = (point - center) / radius;
+  return 1.0 - smoothstep(0.82, 1.0, length(normalizedPoint));
+}`,
+            )
+            .replace(
+              "#include <map_fragment>",
+              `#include <map_fragment>
+
+float leoLeftSide = 1.0 - smoothstep(-2.0, -0.8, vLeoModelPosition.x);
+float leoLeftRear = leoPatchEllipsoid(
+  vLeoModelPosition,
+  vec3(-4.35, 9.8, 14.0),
+  vec3(2.6, 4.7, 3.9)
+) * leoLeftSide;
+float leoLeftTailBase = leoPatchEllipsoid(
+  vLeoModelPosition,
+  vec3(0.0, 15.5, 19.2),
+  vec3(6.0, 2.0, 2.4)
+);
+float leoPatch = max(leoLeftRear, leoLeftTailBase);
+vec3 leoBlackFur = diffuseColor.rgb * 0.025 + vec3(0.004, 0.0035, 0.003);
+diffuseColor.rgb = mix(diffuseColor.rgb, leoBlackFur, leoPatch);`,
+            );
+        };
+        material.customProgramCacheKey = () => "leo-side-patches-v7";
+        material.needsUpdate = true;
+        return material;
+      });
+      mesh.material = Array.isArray(mesh.material) ? materials : materials[0];
     });
+    return () => clonedMaterials.forEach((material) => material.dispose());
   }, [clonedScene]);
 
   useFrame((state, delta) => {

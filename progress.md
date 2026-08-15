@@ -86,3 +86,9 @@ Original prompt: Yes but now dog feels still, make him to change behaviors once 
 - Visually verified the final texture on the actual WebGL model at desktop and 390x844 mobile. The model loads without low-poly facets, mesh tearing, horizontal overflow, or console errors, and the Sit command still reaches the expected UI state.
 - `npm run lint`, `npm run test` (9/9), `npm run build:pages`, and the required Playwright web-game render all pass.
 - Honest remaining limitation: the coat now follows Leo, but the underlying head/body proportions are still those of the supplied generic static Jack Russell mesh. True anatomical likeness and realistic joint motion require a Leo-specific retopologized mesh, quadruped rig, and authored skin weights.
+
+### Asymmetric coat-patch correction
+
+- Added geometry-anchored coat masks rather than another UV guess: Leo's large rear-flank patch is constrained to the left side and the smaller tail-base patch wraps only across the top of the rump. The existing photographed right-shoulder marking remains in the coat texture without a duplicate shader patch.
+- The masks operate in the model's local 3D coordinates, so they remain attached to the correct anatomy while the user rotates Leo or commands move the whole model.
+- Verified the two sides independently by orbiting the real WebGL model 180 degrees. The left view shows the two rear markings; the right view shows the shoulder marking; the rejected debug texture and unwanted tail-base color are absent.
