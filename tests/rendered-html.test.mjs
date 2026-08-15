@@ -27,11 +27,11 @@ test("Leo uses the supplied detailed model instead of disconnected primitive sha
   const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
   assert.match(source, /SketchfabAnimation/);
   assert.match(source, /HOSTED_MODEL_ENABLED = false/);
-  assert.match(source, /leo-detailed\.glb/);
+  assert.match(source, /leo-detailed-v3\.glb/);
   assert.match(source, /smooth local 3D motion/);
   assert.doesNotMatch(source, /sphereGeometry|capsuleGeometry/);
 
-  const detailed = await stat(new URL("../public/models/leo-detailed.glb", import.meta.url));
+  const detailed = await stat(new URL("../public/models/leo-detailed-v3.glb", import.meta.url));
   assert.ok(detailed.size > 4_000_000, "expected the supplied detailed binary model asset");
 });
 

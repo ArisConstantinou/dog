@@ -4,7 +4,7 @@ Leo is a local-first interactive 3D companion inspired by a real older Jack Russ
 
 ## What works
 
-- A continuously rendered, orbitable 3D Leo with articulated head, jaw, tail and legs.
+- A continuously rendered, orbitable 3D Leo using a smooth local mesh and a Leo-specific coat derived from the supplied Meshy texture and reference photos.
 - 25 actions: come, sit, lie down, stay, paw, speak, spin, walk, run, jump, roll over, beg, sniff, dig, stretch, zoomies, shake, scratch, lick, look around, play, treat, sleep, wake and release.
 - Typed, button and browser-supported voice commands all use the same action engine.
 - Five separate interactive worlds: Sunroom, At the Door, Leo Trail, Constellation and Character Studio.
@@ -33,4 +33,8 @@ npm.cmd run lint
 
 ## Important boundary
 
-This is an interactive likeness, not Leo's consciousness. The current character is a custom procedural 3D model shaped and colored from the supplied reference photos. A future production-quality, photo-faithful avatar will need clean front/left/right/back captures and walking, sitting, lying and facial-expression video to build and validate a dedicated textured mesh and motion library.
+This is an interactive likeness, not Leo's consciousness. The current character uses a smooth static Jack Russell mesh recolored from Leo's supplied Meshy texture and photographs. Its commands use safe finite whole-body motion; the mesh does not yet have a quadruped skeleton for realistic joint-level actions. A production-quality, photo-faithful avatar will need a Leo-specific retopologized mesh, rig, skin weights, and motion references.
+
+## 3D asset attribution
+
+The editable base mesh is adapted from [Jack Russell by FainoDS](https://sketchfab.com/3d-models/jack-russell-45f1bbf15b67488fba6bea6822d8a7c3), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Leo's coat treatment is customized from user-supplied references.

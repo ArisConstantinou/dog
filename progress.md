@@ -77,3 +77,12 @@ Original prompt: Yes but now dog feels still, make him to change behaviors once 
 - Replaced the 158 KB low-poly fallback with the supplied 5.09 MB model and preserved its smooth normals and fur texture.
 - Added finite, whole-body procedural motion for commands and four non-repeating idle variations. Movement ends after its command window; Sit/Stay and resting actions hold a distinct stable transform without replaying an animation loop.
 - Local browser proof at `http://127.0.0.1:5178/dog/` shows the supplied dog in the Sunroom with no low-poly facets or mesh tearing. The honest limitation remains that leg-level realistic actions require a professionally authored rig and skin weights for this exact mesh.
+
+### Meshy color transfer
+
+- Received `Meshy_AI_Curious_Little_Compan_0815130733_texture.glb` as a color and marking reference for Leo. The Meshy geometry was deliberately not shipped: it is an unrigged 59.75 MB model with 987,949 uploaded vertices and no animation clips.
+- Extracted its 2048x2048 base-color texture and used it together with Leo's photographs as the authoritative palette for repainting the UV atlas of the smoother local Jack Russell model.
+- Added `leo-coat-meshy-colors.png` as the editable coat source and packed the final runtime asset as `leo-detailed-v3.glb`. Leo now has an off-white freckled body, black folded ears and cap, narrow white facial blaze, muted tan face markings, dark side markings, and a black tail base with a white tip.
+- Visually verified the final texture on the actual WebGL model at desktop and 390x844 mobile. The model loads without low-poly facets, mesh tearing, horizontal overflow, or console errors, and the Sit command still reaches the expected UI state.
+- `npm run lint`, `npm run test` (9/9), `npm run build:pages`, and the required Playwright web-game render all pass.
+- Honest remaining limitation: the coat now follows Leo, but the underlying head/body proportions are still those of the supplied generic static Jack Russell mesh. True anatomical likeness and realistic joint motion require a Leo-specific retopologized mesh, quadruped rig, and authored skin weights.

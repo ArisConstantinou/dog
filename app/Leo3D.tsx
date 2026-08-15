@@ -318,7 +318,7 @@ function FallbackDog({ action, onPet, compact }: Pick<ActorProps, "action" | "on
   const group = useRef<THREE.Group>(null);
   const dog = useRef<THREE.Group>(null);
   const actionStartedAt = useRef(0);
-  const { scene } = useGLTF(`${import.meta.env.BASE_URL}models/leo-detailed.glb`);
+  const { scene } = useGLTF(`${import.meta.env.BASE_URL}models/leo-detailed-v3.glb`);
   const clonedScene = useMemo(() => scene.clone(), [scene]);
 
   useEffect(() => {
@@ -410,4 +410,4 @@ function FallbackDog({ action, onPet, compact }: Pick<ActorProps, "action" | "on
   );
 }
 
-useGLTF.preload(`${import.meta.env.BASE_URL}models/leo-detailed.glb`);
+useGLTF.preload(`${import.meta.env.BASE_URL}models/leo-detailed-v3.glb`);
