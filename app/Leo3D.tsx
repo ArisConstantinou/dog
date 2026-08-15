@@ -403,19 +403,40 @@ float leoHeadBackErase = leoPatchEllipsoid(
   vec3(4.8, 4.0, 6.0)
 ) * (1.0 - smoothstep(2.8, 4.2, abs(vLeoModelPosition.x)))
   * smoothstep(-15.6, -13.8, vLeoModelPosition.y);
-float leoWhiteGrain = 0.012 * sin(vLeoModelPosition.y * 8.0 + vLeoModelPosition.z * 5.0);
-vec3 leoWhiteFur = vec3(0.86, 0.845, 0.81) + leoWhiteGrain;
 float leoWhiteMask = max(
   max(leoOldShoulderPatch, max(leoBackArtifactErase, leoRedBackSpotErase)),
   max(leoNeckErase, leoHeadBackErase)
 );
-diffuseColor.rgb = mix(diffuseColor.rgb, leoWhiteFur, leoWhiteMask);
+float leoSourceLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+float leoNeedsWhiteCorrection = 1.0 - smoothstep(0.62, 0.78, leoSourceLuma);
+vec3 leoWhiteFur = diffuseColor.rgb;
+#ifdef USE_MAP
+  vec2 leoWhiteFurUv = vec2(
+    0.35 + clamp((vLeoModelPosition.y + 22.0) / 44.0, 0.0, 1.0) * 0.10,
+    0.55 + clamp(vLeoModelPosition.z / 31.0, 0.0, 1.0) * 0.10
+  );
+  leoWhiteFur = texture2D(map, leoWhiteFurUv).rgb;
+#else
+  float leoWhiteTextureLuma = 0.78 + 0.14 * pow(max(leoSourceLuma, 0.0), 0.35);
+  leoWhiteFur = vec3(0.86, 0.845, 0.81) * (leoWhiteTextureLuma / 0.845);
+#endif
+diffuseColor.rgb = mix(
+  diffuseColor.rgb,
+  leoWhiteFur,
+  leoWhiteMask * leoNeedsWhiteCorrection
+);
 float leoPatch = max(leoShoulderPatch, leoRearPatch);
-vec3 leoBlackFur = diffuseColor.rgb * 0.025 + vec3(0.004, 0.0035, 0.003);
+float leoBlackSourceLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+float leoBlackTextureLuma = clamp(
+  0.026 + (leoBlackSourceLuma - 0.72) * 0.16,
+  0.012,
+  0.075
+);
+vec3 leoBlackFur = vec3(1.0, 0.92, 0.84) * leoBlackTextureLuma;
 diffuseColor.rgb = mix(diffuseColor.rgb, leoBlackFur, leoPatch);`,
             );
         };
-        material.customProgramCacheKey = () => "leo-side-patches-v16-clean-tail-root";
+        material.customProgramCacheKey = () => "leo-side-patches-v20-clean-white-fur";
         material.needsUpdate = true;
         return material;
       });

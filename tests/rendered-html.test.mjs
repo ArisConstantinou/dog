@@ -75,10 +75,16 @@ test("Leo keeps the photographed coat patches on their corrected sides", async (
   assert.match(source, /leoRedBackSpotErase/);
   assert.match(source, /leoNeckErase/);
   assert.match(source, /leoHeadBackErase/);
+  assert.match(source, /leoNeedsWhiteCorrection/);
+  assert.match(source, /leoWhiteFurUv/);
+  assert.match(source, /leoWhiteTextureLuma/);
+  assert.match(source, /leoBlackTextureLuma/);
+  assert.match(source, /texture2D\(map, leoWhiteFurUv\)/);
   assert.match(source, /leoPositiveSide/);
   assert.match(source, /leoNegativeSide/);
-  assert.match(source, /leo-side-patches-v16-clean-tail-root/);
+  assert.match(source, /leo-side-patches-v20-clean-white-fur/);
   assert.doesNotMatch(source, /leoTailBasePatch/);
+  assert.doesNotMatch(source, /leoWhiteGrain/);
   assert.doesNotMatch(source, /leo-side-debug|#ff00ff/);
 });
 
