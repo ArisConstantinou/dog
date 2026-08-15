@@ -66,12 +66,19 @@ test("resting poses hold instead of endlessly replaying a transition", async () 
   assert.doesNotMatch(source, /\["ready", "stay"\]\.includes/);
 });
 
-test("Leo keeps the photographed coat patches on their correct sides", async () => {
+test("Leo keeps the photographed coat patches on their corrected sides", async () => {
   const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
-  assert.match(source, /leoLeftRear/);
-  assert.match(source, /leoLeftTailBase/);
-  assert.match(source, /leoLeftSide/);
-  assert.match(source, /leo-side-patches-v7/);
+  assert.match(source, /leoRearPatch/);
+  assert.match(source, /leoShoulderPatch/);
+  assert.match(source, /leoOldShoulderPatch/);
+  assert.match(source, /leoBackArtifactErase/);
+  assert.match(source, /leoRedBackSpotErase/);
+  assert.match(source, /leoNeckErase/);
+  assert.match(source, /leoHeadBackErase/);
+  assert.match(source, /leoPositiveSide/);
+  assert.match(source, /leoNegativeSide/);
+  assert.match(source, /leo-side-patches-v16-clean-tail-root/);
+  assert.doesNotMatch(source, /leoTailBasePatch/);
   assert.doesNotMatch(source, /leo-side-debug|#ff00ff/);
 });
 

@@ -365,23 +365,57 @@ float leoPatchEllipsoid(vec3 point, vec3 center, vec3 radius) {
               "#include <map_fragment>",
               `#include <map_fragment>
 
-float leoLeftSide = 1.0 - smoothstep(-2.0, -0.8, vLeoModelPosition.x);
-float leoLeftRear = leoPatchEllipsoid(
+float leoNegativeSide = 1.0 - smoothstep(-2.0, -0.8, vLeoModelPosition.x);
+float leoPositiveSide = smoothstep(0.8, 2.0, vLeoModelPosition.x);
+float leoRearPatch = leoPatchEllipsoid(
   vLeoModelPosition,
-  vec3(-4.35, 9.8, 14.0),
+  vec3(4.35, 9.8, 14.0),
   vec3(2.6, 4.7, 3.9)
-) * leoLeftSide;
-float leoLeftTailBase = leoPatchEllipsoid(
+) * leoPositiveSide;
+float leoShoulderPatch = leoPatchEllipsoid(
   vLeoModelPosition,
-  vec3(0.0, 15.5, 19.2),
-  vec3(6.0, 2.0, 2.4)
+  vec3(-4.35, -4.8, 11.0),
+  vec3(2.7, 3.8, 3.0)
+) * leoNegativeSide;
+float leoOldShoulderPatch = leoPatchEllipsoid(
+  vLeoModelPosition,
+  vec3(0.0, -4.2, 12.8),
+  vec3(7.0, 6.0, 5.2)
 );
-float leoPatch = max(leoLeftRear, leoLeftTailBase);
+float leoBackArtifactErase = leoPatchEllipsoid(
+  vLeoModelPosition,
+  vec3(0.0, 14.9, 19.2),
+  vec3(7.0, 2.7, 3.6)
+);
+float leoRedBackSpotErase = leoPatchEllipsoid(
+  vLeoModelPosition,
+  vec3(0.0, 12.7, 21.2),
+  vec3(4.0, 2.4, 2.3)
+);
+float leoNeckErase = leoPatchEllipsoid(
+  vLeoModelPosition,
+  vec3(0.0, -9.8, 20.5),
+  vec3(6.8, 5.0, 6.8)
+) * smoothstep(-14.8, -12.8, vLeoModelPosition.y);
+float leoHeadBackErase = leoPatchEllipsoid(
+  vLeoModelPosition,
+  vec3(0.0, -14.2, 26.0),
+  vec3(4.8, 4.0, 6.0)
+) * (1.0 - smoothstep(2.8, 4.2, abs(vLeoModelPosition.x)))
+  * smoothstep(-15.6, -13.8, vLeoModelPosition.y);
+float leoWhiteGrain = 0.012 * sin(vLeoModelPosition.y * 8.0 + vLeoModelPosition.z * 5.0);
+vec3 leoWhiteFur = vec3(0.86, 0.845, 0.81) + leoWhiteGrain;
+float leoWhiteMask = max(
+  max(leoOldShoulderPatch, max(leoBackArtifactErase, leoRedBackSpotErase)),
+  max(leoNeckErase, leoHeadBackErase)
+);
+diffuseColor.rgb = mix(diffuseColor.rgb, leoWhiteFur, leoWhiteMask);
+float leoPatch = max(leoShoulderPatch, leoRearPatch);
 vec3 leoBlackFur = diffuseColor.rgb * 0.025 + vec3(0.004, 0.0035, 0.003);
 diffuseColor.rgb = mix(diffuseColor.rgb, leoBlackFur, leoPatch);`,
             );
         };
-        material.customProgramCacheKey = () => "leo-side-patches-v7";
+        material.customProgramCacheKey = () => "leo-side-patches-v16-clean-tail-root";
         material.needsUpdate = true;
         return material;
       });
