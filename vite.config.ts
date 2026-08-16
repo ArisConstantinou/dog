@@ -46,7 +46,7 @@ export default defineConfig(async () => {
   return {
     server: {
       host: "127.0.0.1",
-      port: 5178,
+      port: 5201,
       strictPort: true,
       ...(isCodexSeatbeltSandbox
         ? { watch: { useFsEvents: false, usePolling: true } }
