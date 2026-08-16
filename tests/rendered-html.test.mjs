@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import test from "node:test";
 
 async function render() {
@@ -23,16 +23,20 @@ test("server-renders Leo's interactive 3D companion", async () => {
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
-test("Leo uses the supplied detailed model instead of disconnected primitive shapes", async () => {
-  const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
-  assert.match(source, /SketchfabAnimation/);
-  assert.match(source, /HOSTED_MODEL_ENABLED = false/);
-  assert.match(source, /leo-detailed-v3\.glb/);
-  assert.match(source, /smooth local 3D motion/);
+test("Leo uses only the optimized owner-selected Meshy GLB", async () => {
+  const bridge = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
+  const source = await readFile(new URL("../app/Leo3DTopology.tsx", import.meta.url), "utf8");
+  assert.match(bridge, /Leo3DTopology/);
+  assert.match(source, /models\/leo\.glb/);
+  assert.match(source, /data-motion-system="topology-deformation"/);
+  assert.doesNotMatch(source, /Sketchfab|leo-detailed|leo-rigged-fallback/);
   assert.doesNotMatch(source, /sphereGeometry|capsuleGeometry/);
 
-  const detailed = await stat(new URL("../public/models/leo-detailed-v3.glb", import.meta.url));
-  assert.ok(detailed.size > 4_000_000, "expected the supplied detailed binary model asset");
+  const modelDirectory = new URL("../public/models/", import.meta.url);
+  const glbFiles = (await readdir(modelDirectory)).filter((name) => name.endsWith(".glb"));
+  assert.deepEqual(glbFiles, ["leo.glb"]);
+  const detailed = await stat(new URL("../public/models/leo.glb", import.meta.url));
+  assert.ok(detailed.size > 7_000_000 && detailed.size < 9_000_000, "expected the optimized Meshy runtime asset");
 });
 
 test("one-shot commands return Leo to Ready instead of looping forever", async () => {
@@ -49,43 +53,29 @@ test("autonomous idle behaviors vary and yield to protected states", async () =>
   assert.match(source, /window\.advanceTime/);
 });
 
-test("Ready keeps the pose established by the completed command", async () => {
-  const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
-  assert.match(source, /normalizedAction === "ready"\s*\? poseClipHints\[nextPose\]/);
-  assert.match(source, /data-animation-clip=\{selectedClipName\}/);
+test("topology motion responds to Leo's current action", async () => {
+  const source = await readFile(new URL("../app/Leo3DTopology.tsx", import.meta.url), "utf8");
+  assert.match(source, /calculateMotion\(action, elapsed, time, reducedMotion\)/);
+  assert.match(source, /uLeoHeadYaw/);
+  assert.match(source, /uLeoTailWag/);
+  assert.match(source, /uLeoGait/);
+  assert.match(source, /data-topology-action=\{action\.toLowerCase\(\)\}/);
 });
 
 test("resting poses hold instead of endlessly replaying a transition", async () => {
-  const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
-  assert.match(source, /stand: \["idle 1", "idle 2", "idle 4", "idle"\]/);
-  assert.match(source, /shouldLoop = forceLoop \?\? finiteLoopActions\.has\(normalizedAction\)/);
-  assert.match(source, /data-animation-cycle=\{selectedCycleMode\}/);
-  assert.match(source, /\["sit", "stay", "paw", "beg", "treat"\]\.includes\(command\)/);
-  assert.match(source, /activeGait = .*elapsed </);
-  assert.match(source, /Math\.floor\(idleTime \/ 7\.5\) % 4/);
-  assert.doesNotMatch(source, /\["ready", "stay"\]\.includes/);
+  const source = await readFile(new URL("../app/Leo3DTopology.tsx", import.meta.url), "utf8");
+  assert.match(source, /if \(elapsed < duration && !reducedMotion\)/);
+  assert.match(source, /command === "jump" && elapsed < 1\.45/);
+  assert.match(source, /command === "spin" && elapsed < 1\.7/);
+  assert.match(source, /\["sit", "stay"\]\.includes\(command\)/);
+  assert.doesNotMatch(source, /AnimationMixer|LoopRepeat/);
 });
 
 test("Leo keeps the photographed coat patches on their corrected sides", async () => {
-  const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
-  assert.match(source, /leoRearPatch/);
-  assert.match(source, /leoShoulderPatch/);
-  assert.match(source, /leoOldShoulderPatch/);
-  assert.match(source, /leoBackArtifactErase/);
-  assert.match(source, /leoRedBackSpotErase/);
-  assert.match(source, /leoNeckErase/);
-  assert.match(source, /leoHeadBackErase/);
-  assert.match(source, /leoNeedsWhiteCorrection/);
-  assert.match(source, /leoWhiteFurUv/);
-  assert.match(source, /leoWhiteTextureLuma/);
-  assert.match(source, /leoBlackTextureLuma/);
-  assert.match(source, /texture2D\(map, leoWhiteFurUv\)/);
-  assert.match(source, /leoPositiveSide/);
-  assert.match(source, /leoNegativeSide/);
-  assert.match(source, /leo-side-patches-v20-clean-white-fur/);
-  assert.doesNotMatch(source, /leoTailBasePatch/);
-  assert.doesNotMatch(source, /leoWhiteGrain/);
-  assert.doesNotMatch(source, /leo-side-debug|#ff00ff/);
+  const source = await readFile(new URL("../app/Leo3DTopology.tsx", import.meta.url), "utf8");
+  assert.match(source, /material\.vertexColors = true/);
+  assert.match(source, /leo-topology-motion-v1/);
+  assert.doesNotMatch(source, /leoRearPatch|leoShoulderPatch|leoWhiteFurUv|#ff00ff/);
 });
 
 test("autonomous behavior returns to the user's requested pose", async () => {
@@ -95,18 +85,16 @@ test("autonomous behavior returns to the user's requested pose", async () => {
   assert.doesNotMatch(source, /pose: behavior\.endPose/);
 });
 
-test("every animation family uses a safe camera frame and complete clips", async () => {
-  const source = await readFile(new URL("../app/Leo3D.tsx", import.meta.url), "utf8");
-  assert.match(source, /type CameraPreset = "standard" \| "low" \| "jump"/);
-  assert.match(source, /data-camera-preset=\{selectedCameraPreset\}/);
-  assert.match(source, /"roll-over": \["lie loop 2", "lie loop"\]/);
-  assert.match(source, /dig: \["digging loop", "digging start"\]/);
-  assert.match(source, /treat: \["eat loop", "eat 2", "eatdrink start"\]/);
-  assert.match(source, /!shouldLoop && normalizedAction === "sleep"/);
-  assert.doesNotMatch(source, /actionRef\.current === requestedAction/);
+test("topology regions cover head, tail, legs, paw, rear body, and spine", async () => {
+  const source = await readFile(new URL("../app/Leo3DTopology.tsx", import.meta.url), "utf8");
+  for (const region of ["leoHead", "leoTail", "leoFrontLeg", "leoRearLeg", "leoRaisedPaw", "leoRearBody", "leoSpine"]) {
+    assert.match(source, new RegExp(region));
+  }
+  assert.match(source, /prefers-reduced-motion: reduce/);
+  assert.match(source, /window\.__leoAnimationTime/);
 });
 
-test("command timing follows the actual selected 3D clips", async () => {
+test("command timing keeps the topology actions bounded", async () => {
   const appSource = await readFile(new URL("../app/LeoApp.tsx", import.meta.url), "utf8");
   assert.match(appSource, /spin: \{[^}]+duration: 2150/);
   assert.match(appSource, /"roll-over": \{[^}]+duration: 4200/);

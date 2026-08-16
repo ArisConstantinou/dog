@@ -205,26 +205,6 @@ export default function LeoApp() {
   }, [state]);
 
   useEffect(() => {
-    window.render_game_to_text = () => JSON.stringify({
-      coordinateSystem: "The 3D actor is centered inside the visible stage; screen x increases right and y increases down.",
-      world,
-      leo: {
-        pose: state.pose,
-        action: state.action,
-        busy: state.busy,
-        staying: state.stay,
-        energy: state.energy,
-        joy: state.joy,
-        bond: state.bond,
-        calm: state.calm,
-      },
-      visibleControls: commands.map(({ id }) => id),
-      memoryCount: memories.length,
-    });
-    return () => { delete window.render_game_to_text; };
-  }, [memories.length, state, world]);
-
-  useEffect(() => {
     try {
       localStorage.setItem("leo-memories-v1", JSON.stringify(memories));
     } catch { console.warn("Leo memories could not be persisted."); }
@@ -294,14 +274,28 @@ export default function LeoApp() {
   useEffect(() => {
     window.render_game_to_text = () => JSON.stringify({
       mode: "leo-companion",
-      action: stateRef.current.action,
-      pose: stateRef.current.pose,
-      busy: stateRef.current.busy,
-      stay: stateRef.current.stay,
+      coordinateSystem: "The 3D actor is centered inside the visible stage; screen x increases right and y increases down.",
+      world,
+      leo: {
+        action: stateRef.current.action,
+        pose: stateRef.current.pose,
+        busy: stateRef.current.busy,
+        staying: stateRef.current.stay,
+        energy: stateRef.current.energy,
+        joy: stateRef.current.joy,
+        bond: stateRef.current.bond,
+        calm: stateRef.current.calm,
+      },
+      model: "leo.glb",
+      motionSystem: "topology-deformation",
+      topology: window.__leoTopologyState ?? null,
       autonomousRecent: recentAutonomy.current,
+      visibleControls: commands.map(({ id }) => id),
+      memoryCount: memories.length,
       note: "Leo is a centered 3D companion; commands override autonomous idle behaviors.",
     });
     window.advanceTime = (milliseconds) => {
+      window.__leoAnimationTime = (window.__leoAnimationTime ?? 0) + Math.max(0, milliseconds) / 1000;
       const current = stateRef.current;
       if (current.busy || current.stay || current.pose === "sleep") {
         advancedIdleMilliseconds.current = 0;
@@ -316,8 +310,10 @@ export default function LeoApp() {
     return () => {
       delete window.render_game_to_text;
       delete window.advanceTime;
+      delete window.__leoAnimationTime;
+      delete window.__leoTopologyState;
     };
-  }, [triggerAutonomousBehavior]);
+  }, [memories.length, triggerAutonomousBehavior, world]);
 
   useEffect(() => () => {
     if (actionTimer.current) clearTimeout(actionTimer.current);

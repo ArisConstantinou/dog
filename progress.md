@@ -106,3 +106,13 @@ Original prompt: Yes but now dog feels still, make him to change behaviors once 
 - The first atlas projection sampled a face/coat boundary because of the glTF texture orientation and visibly corrupted the neck; rejected during QA. Moved the white sample into a central atlas area that is clean white fur under either V orientation, and restored the verified luminance-preserving black treatment rather than risking an unverified black atlas tile.
 - Direct atlas crop comparison confirmed the second sample still contained grey spots. The rendered orientation was identified from the matching crop, then the projection was moved to the verified clean mid-left body-fur region (U 0.35-0.45, V 0.55-0.65), which contains dense white hair with no face, black patch, or grey spot contamination.
 - Final v20 QA passed in the real WebGL canvas from front and rear: the corrected neck/skull/rump use clean photographic white hairs matching the body, existing white areas are not recolored, face and ears remain intact, the pink tail-root artifact remains gone, desktop and 390x844 mobile have zero console errors, lint passes, 10/10 tests pass, Pages build succeeds, and the required interaction client screenshot was inspected.
+
+### Meshy runtime replacement and topology motion
+
+- Replaced every previous runtime GLB with the owner-selected Meshy Leo model. The production model folder now contains exactly one GLB: `leo.glb`.
+- Optimized the supplied model locally from roughly 1.99 million to 159,006 triangles and resized its PBR textures to 2048px, reducing the web asset to 7.64 MB while preserving its asymmetric vertex-color markings.
+- Replaced the legacy clip/coordinate shader component with bounded topology-region movement for breathing, head, tail, front/rear legs, raised paw, rear-body crouch, and spine twist.
+- Added deterministic topology state to `render_game_to_text` and `advanceTime` for browser-level motion verification.
+- Build, Pages build, lint, and 10 automated tests pass.
+- Required web-game client and real Playwright browser QA confirm `leo.glb` is the only requested GLB, topology values change during Stay/Walk/Paw, the visible paw lifts, both asymmetric coat sides remain correct, desktop/mobile have no page overflow, all visible buttons remain at least 44px, and the console has zero errors.
+- Deployed Pages verification remains to be completed after push.

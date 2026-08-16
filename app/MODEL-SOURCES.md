@@ -1,6 +1,8 @@
-# Leo 3D model sources
+# Leo 3D model source
 
-- Disabled legacy reference rig: **Dog - Jack Russell Terrier** by RedDeer. It remains documented for provenance but is no longer rendered by the application: https://sketchfab.com/3d-models/e75a550f4a9b4d18bc1b45ca2e6f56d2
-- Current editable local rig: **Animated Animales Low Poly / Animal Pack Vol. 2** by Quaternius, CC0, with an experimental Leo-specific coat and collar pass: https://opengameart.org/content/animated-animales-low-poly
+- Runtime asset: `public/models/leo.glb`.
+- Source: the owner-selected Meshy Leo model generated from Leo's references.
+- Web optimization: 159,006 triangles, 98,633 vertices, 2048px base-color, metallic/roughness, and normal textures; asymmetric markings remain in `COLOR_0` vertex data.
+- Motion: local shader-based topology deformation for head, torso, tail, front/rear legs, raised paw, rear-body crouch, and spine twist.
 
-The hosted dog must not be shown again. The current local rig is an editable technical prototype, not Leo's final likeness; it must eventually be replaced by a higher-detail local Leo mesh and complete quadruped motion library.
+No other GLB is shipped or loaded. The previous generic Jack Russell and low-poly models are removed from the website. This Meshy source has no armature, skin weights, or embedded animation clips, so the current motion is an honest topology-deformation stage rather than a full skeletal quadruped rig.
